@@ -1,0 +1,9 @@
+# Dipendenze aggiuntive per FastAPI backend (api_server.py)
+# Installa con: pip install -r requirements_api.txt
+# (Oltre alle dipendenze già in requirements.txt)
+
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+httpx==0.25.2
+pydantic-settings==2.1.0
