@@ -17,3 +17,8 @@ venv/
 .coverage
 htmlcov/
 backups/
+
+# Reference documents may contain personal data
+evaluation/gold/*
+!evaluation/gold/esempio_*
+evaluation/reports/

@@ -1,0 +1,21 @@
+{
+  "document_type": "visura_catastale",
+  "expected": {
+    "intestatari": ["Rossi Giovanni"],
+    "codici_fiscali_intestatari": ["RSSGVN75A15H501U"],
+    "riferimento": {
+      "comune": "Bologna",
+      "foglio": "285",
+      "particella": "789",
+      "subalterno": "2",
+      "categoria": "A/2",
+      "classe": "3",
+      "consistenza": "6 vani",
+      "rendita_catastale_eur": 720,
+      "indirizzo": "Via Giustiniano 456"
+    },
+    "superficie_catastale_mq": 110,
+    "data_visura": "14/09/2026",
+    "diritti_e_quote": "proprietà esclusiva"
+  }
+}
