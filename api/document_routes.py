@@ -197,6 +197,8 @@ async def analyze_property_document(
             detail = json.loads(result.body).get("error", "Document analysis failed")
         except Exception:
             detail = "Document analysis failed"
+        if any(marker in str(detail) for marker in ("insufficient_quota", "credit_balance_exhausted")):
+            raise HTTPException(503, "Credito del servizio AI (OpenAI) esaurito: ricaricalo e riprova il caricamento.")
         raise HTTPException(result.status_code, detail)
 
     payload = json.loads(result.body)

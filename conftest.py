@@ -7,6 +7,7 @@ import os
 
 LIVE_TEST_MODULES = [
     "test_classifier.py",
+    "test_extraction_engine.py",
     "test_fact_mapper.py",
     "test_fact_repository_v2.py",
     "test_facts_repository.py",
