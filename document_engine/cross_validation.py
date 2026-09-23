@@ -289,7 +289,7 @@ def _show_number(unit: str) -> Callable[[float], str]:
 
 
 SPECS: dict[str, FieldSpec] = {spec.key: spec for spec in [
-    FieldSpec("catasto.comune", "Comune", "high", norm_comune),
+    FieldSpec("catasto.comune", "Comune", "high", norm_comune, display=lambda v: v.title()),
     FieldSpec("catasto.sezione", "Sezione catastale", "medium", norm_catasto_id),
     FieldSpec("catasto.foglio", "Foglio", "high", norm_catasto_id),
     FieldSpec("catasto.particella", "Particella", "high", norm_catasto_id),
