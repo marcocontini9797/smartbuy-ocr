@@ -180,7 +180,14 @@ class VisuraCatastale(BaseModel):
 
     tipo_documento: TipoDocumento = TipoDocumento.VISURA_CATASTALE
     intestatari: list[str] = Field(default_factory=list)
+    codici_fiscali_intestatari: list[str] = Field(
+        default_factory=list,
+        description="Codici fiscali degli intestatari, nello stesso ordine di 'intestatari', copiati carattere per carattere",
+    )
     riferimento: Optional[RiferimentoCatastale] = None
+    superficie_catastale_mq: Optional[float] = Field(
+        default=None, description="Superficie catastale in m² se riportata nella visura"
+    )
     data_visura: Optional[str] = None
     diritti_e_quote: Optional[str] = Field(
         default=None, description="es. 'proprietà per 1/1', 'usufrutto per 1/2'"

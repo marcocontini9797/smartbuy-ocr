@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -34,6 +35,55 @@ def _best_effort_insert(client, table: str, payload: dict) -> None:
         client.table(table).upsert(payload).execute()
     except Exception:
         return
+
+
+# Top-level extracted fields that are metadata, not facts about the property.
+_NON_FACT_FIELDS = {"tipo_documento", "note_incertezza"}
+
+
+def _field_value(value):
+    """CampoEstratto-like dicts carry value, citation and confidence separately."""
+    if isinstance(value, dict) and "valore" in value:
+        return value.get("valore"), value.get("fonte"), value.get("confidence")
+    return value, None, None
+
+
+def persist_document_facts(client, *, property_id: int, document: dict, analysis: dict,
+                           extracted_fields: dict | None, default_confidence: float | None,
+                           model_name: str | None) -> int:
+    """Store each extracted field as a property fact with its provenance.
+
+    Provenance ids are generated here so each fact is linked to its own row
+    without relying on the order of rows returned by a bulk insert.
+    """
+    provenance_rows, fact_rows = [], []
+    for name, raw in (extracted_fields or {}).items():
+        value, citation, confidence = _field_value(raw)
+        if name in _NON_FACT_FIELDS or value in (None, "", [], {}):
+            continue
+        confidence = confidence if confidence is not None else default_confidence
+        provenance_id = str(uuid.uuid4())
+        provenance_rows.append({
+            "id": provenance_id, "analysis_result_id": analysis["id"], "document_id": document["id"],
+            "property_id": property_id, "fact_name": name, "fact_value": {"value": value},
+            "source_type": "document", "source_document": document.get("file_name"), "source_text": citation,
+            "extraction_method": "llm_structured_extraction_verified", "model_name": model_name,
+            "confidence_score": confidence,
+        })
+        fact_rows.append({
+            "property_id": property_id, "fact_name": name, "fact_value": {"value": value},
+            "fact_category": document.get("document_type") or "document", "source_type": "document",
+            "source_document_id": document["id"], "provenance_id": provenance_id,
+            "confidence_score": confidence, "verification_status": "unverified",
+        })
+    if not fact_rows:
+        return 0
+    try:
+        client.table("fact_provenance").insert(provenance_rows).execute()
+        client.table("property_facts").insert(fact_rows).execute()
+    except Exception as exc:
+        raise HTTPException(502, "Unable to persist extracted facts") from exc
+    return len(fact_rows)
 
 
 @router.post("/properties/{property_id}/documents", status_code=201)
@@ -92,6 +142,7 @@ async def analyze_property_document(
     now = datetime.now(timezone.utc).isoformat()
     document = _insert_one(client, "documents", {
         "agente_id": client.smartbuy_user_id,
+        "fascicolo_id": str(property_id),
         "file_name": file.filename,
         "document_type": payload.get("document_type"),
         "processing_status": "completed",
@@ -119,6 +170,15 @@ async def analyze_property_document(
         "warnings": (payload.get("red_flags") or []) + (payload.get("consistency_discrepancies") or []),
         "analyzed_at": payload.get("processed_at") or now,
     })
+    try:
+        from llm_client import MODEL as extraction_model
+    except Exception:
+        extraction_model = None
+    facts_saved = persist_document_facts(
+        client, property_id=property_id, document=document, analysis=analysis,
+        extracted_fields=payload.get("extracted_fields"),
+        default_confidence=payload.get("extraction_confidence"), model_name=extraction_model,
+    )
     _best_effort_insert(client, "smartbuy_analysis_runs", run.model_dump(mode="json"))
     for name in ("ocr", "classification", "extraction"):
         _best_effort_insert(client, "smartbuy_run_stages", PipelineStage.completed(
@@ -138,6 +198,7 @@ async def analyze_property_document(
         "document": document,
         "analysis": analysis,
         "result": payload,
+        "facts_saved": facts_saved,
         "lineage": {
             "property_id": property_id,
             "document_id": document["id"],

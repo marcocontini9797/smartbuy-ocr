@@ -195,3 +195,30 @@ def test_property_sheet_address_is_checked_against_documents():
 def test_property_sheet_alone_produces_no_single_source_noise():
     findings = cross_validate(1, property_record={"address": "Via Vizzani 72", "city": "Bologna", "surface_m2": 92}, today=TODAY)
     assert findings == []
+
+
+@pytest.mark.parametrize("raw", ["Bologna (BO)", "BOLOGNA - BO", "Comune di Bologna", "bologna"])
+def test_comune_ignores_province_suffix(raw):
+    from document_engine.cross_validation import norm_comune
+    assert norm_comune(raw) == "bologna"
+
+
+def test_interno_is_not_the_civico():
+    assert norm_address("Via Giustiniano 456, interno 3") == ("via giustiniano", "456")
+    assert norm_address("Via Vizzani 72 int. 5 piano 2") == ("via vizzani", "72")
+
+
+def test_real_visura_output_matches_property_sheet_without_false_conflicts():
+    # Fields exactly as produced by the live pipeline on visura_demo.pdf.
+    visura = {"id": 7, "document_type": "visura_catastale", "extracted_fields": {
+        "intestatari": ["Rossi Giovanni"], "codici_fiscali_intestatari": ["RSSGVN75A15H501U"],
+        "riferimento": {"comune": "Bologna (BO)", "foglio": "285", "particella": "789", "subalterno": "2",
+                        "categoria": "A/2", "rendita_catastale_eur": 720.0, "indirizzo": "Via Giustiniano 456, interno 3"},
+        "superficie_catastale_mq": 110.0, "data_visura": "2026-09-14",
+        "diritti_e_quote": "Proprietà esclusiva di Rossi Giovanni; quota numerica non esplicitata."}}
+    findings = by_field(cross_validate(1, documents=[visura], today=TODAY,
+                                       property_record={"address": "Via Giustiniano, 456", "city": "Bologna", "surface_m2": 110}))
+    assert findings["catasto.comune"].status == "consistent"
+    assert findings["indirizzo"].status == "consistent"
+    assert findings["superficie_catastale_mq"].status == "insufficient_evidence"
+    assert not any(f.status in {"conflict", "invalid"} for f in findings.values())

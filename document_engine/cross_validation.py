@@ -117,6 +117,13 @@ def norm_catasto_id(value: Any) -> str | None:
     return str(int(text)) if text.isdigit() else text.upper()
 
 
+def norm_comune(value: Any) -> str | None:
+    """``Bologna (BO)`` / ``BOLOGNA - BO`` / ``Comune di Bologna`` -> ``bologna``."""
+    text = re.sub(r"\(\s*[A-Za-z]{2}\s*\)|[-,]\s*[A-Za-z]{2}\s*$", " ", str(value or ""))
+    text = re.sub(r"^\s*comune\s+di\s+", "", norm_text(text))
+    return text.strip() or None
+
+
 def norm_categoria(value: Any) -> str | None:
     match = re.search(r"\b([A-F])\s*[/\-]?\s*0*(\d{1,2})\b", strip_accents(str(value or "")).upper())
     return f"{match.group(1)}/{int(match.group(2))}" if match else None
@@ -178,8 +185,12 @@ def norm_people(value: Any) -> frozenset[frozenset[str]]:
     return frozenset(p for p in (norm_person(item) for item in items) if p)
 
 
+_ADDRESS_UNIT = re.compile(r"\b(interno|int|scala|sc|piano|p\.?t|lotto|edificio)\b\.?\s*\w*", re.IGNORECASE)
+
+
 def norm_address(value: Any) -> tuple[str, str | None] | None:
-    text = norm_text(value)
+    """(via, civico): unit details such as ``interno 3`` or ``piano 2`` are not the civico."""
+    text = norm_text(_ADDRESS_UNIT.sub(" ", strip_accents(str(value or ""))))
     if not text:
         return None
     tokens = [_ADDRESS_ABBREVIATIONS.get(t, t) for t in text.replace("/", " / ").split()]
@@ -278,7 +289,7 @@ def _show_number(unit: str) -> Callable[[float], str]:
 
 
 SPECS: dict[str, FieldSpec] = {spec.key: spec for spec in [
-    FieldSpec("catasto.comune", "Comune catastale", "high", lambda v: norm_text(v) or None),
+    FieldSpec("catasto.comune", "Comune", "high", norm_comune),
     FieldSpec("catasto.sezione", "Sezione catastale", "medium", norm_catasto_id),
     FieldSpec("catasto.foglio", "Foglio", "high", norm_catasto_id),
     FieldSpec("catasto.particella", "Particella", "high", norm_catasto_id),
@@ -289,6 +300,9 @@ SPECS: dict[str, FieldSpec] = {spec.key: spec for spec in [
     FieldSpec("catasto.rendita_eur", "Rendita catastale", "medium", parse_number, _numeric(0.001), _show_number(" €")),
     FieldSpec("indirizzo", "Indirizzo", "medium", norm_address, _address, lambda v: " ".join(x for x in v if x).title()),
     FieldSpec("proprietari", "Proprietari / intestatari", "high", norm_people, _people, _show_people),
+    FieldSpec("codici_fiscali", "Codici fiscali intestatari", "high",
+              lambda v: frozenset(find_codici_fiscali(" ".join(v) if isinstance(v, list) else v)) or None,
+              _exact, lambda v: ", ".join(sorted(v))),
     FieldSpec("quota_proprieta", "Quota di proprietà", "high", parse_quota, _numeric(0.0), lambda v: f"{v:.0%}"),
     FieldSpec("classe_energetica", "Classe energetica", "medium", norm_energy_class, _energy),
     FieldSpec("epgl", "EPgl (kWh/m² anno)", "low", parse_number, _numeric(0.02), _show_number("")),
@@ -312,6 +326,7 @@ ALIASES = {
     "superficie_dichiarata_mq": "superficie_commerciale_mq", "superficie_commerciale_mq": "superficie_commerciale_mq",
     "superficie_commerciale_considerata_mq": "superficie_commerciale_mq", "surface_m2": "superficie_commerciale_mq",
     "superficie_catastale_mq": "superficie_catastale_mq",
+    "codici_fiscali_intestatari": "codici_fiscali",
     "prezzo_eur": "prezzo_eur", "asking_price": "prezzo_eur", "price": "prezzo_eur",
     "canone_mensile_eur": "canone_mensile_eur",
     "address": "indirizzo", "indirizzo": "indirizzo",

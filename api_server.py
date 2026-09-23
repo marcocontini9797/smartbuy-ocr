@@ -144,24 +144,29 @@ async def ingest_document(
             from extraction import extract_document_verified
 
 
-            result = extract_document_verified(
+            extracted_model, verification = extract_document_verified(
                 ocr_text,
                 doc_type
             )
-
-
-            if result:
-
-                extracted_data = result
-
-
-                if hasattr(result, "dict"):
-                    extracted_data = result.dict(
-                        exclude_none=True
-                    )
-
-
-                extraction_confidence = 0.85
+            extracted_data = extracted_model.model_dump(
+                mode="json",
+                exclude_none=True
+            )
+            # Confidence = share of extracted fields the verifier found
+            # supported by the OCR text (not a fixed constant).
+            filled = [
+                key for key, value in extracted_data.items()
+                if key not in {"tipo_documento", "note_incertezza"}
+                and value not in (None, "", [], {})
+            ]
+            unsupported = {
+                item.campo.split(".")[0]
+                for item in verification.campi_non_supportati
+            }
+            extraction_confidence = round(
+                1 - len(unsupported & set(filled)) / max(len(filled), 1),
+                3
+            ) if filled else 0.0
 
 
         except Exception:
@@ -278,7 +283,7 @@ async def ingest_document(
             "consistency_discrepancies":
                 consistency_discrepancies,
 
-            "ocr_confidence": 0.92,
+            "ocr_confidence": None,  # not measured by the vision OCR
 
             "extraction_confidence":
                 extraction_confidence,
