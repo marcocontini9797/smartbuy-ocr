@@ -8,7 +8,8 @@ from pydantic import BaseModel
 from api.property_routes import _rows, get_property
 from api.session import user_client
 from core.operational_models import DocumentRequest
-from document_engine.operational_services import cross_validate_facts, route_ape_source, validate_gis
+from document_engine.cross_validation import cross_validate, summarize
+from document_engine.operational_services import route_ape_source, validate_gis
 from document_engine.external_sources import REGISTRY, source_plan
 from document_engine.acquisition_engine import build_acquisition_plan
 
@@ -53,16 +54,23 @@ def verification_plan(property_id: int, client=Depends(user_client)):
 
 @router.get("/properties/{property_id}/cross-validation")
 def cross_validation(property_id: int, client=Depends(user_client)):
-    get_property(property_id, client)
-    findings = cross_validate_facts(property_id, _rows(client, "property_facts", property_id))
+    property_record = get_property(property_id, client)
+    facts = _rows(client, "property_facts", property_id)
+    analyses = _rows(client, "document_analyses", property_id)
+    document_ids = list({row["document_id"] for row in analyses if row.get("document_id") is not None})
+    provenance_ids = list({row["provenance_id"] for row in facts if row.get("provenance_id") is not None})
+    try:
+        documents = client.table("documents").select("*").in_("id", document_ids).execute().data or [] if document_ids else []
+        provenance = client.table("fact_provenance").select("*").in_("id", provenance_ids).execute().data or [] if provenance_ids else []
+    except Exception as exc:
+        raise HTTPException(502, "Cross-validation sources unavailable") from exc
+    findings = cross_validate(property_id, facts=facts, documents=documents,
+                              provenance={str(row["id"]): row for row in provenance},
+                              property_record=property_record)
     return {
         "property_id": property_id,
         "findings": [item.model_dump(mode="json") for item in findings],
-        "summary": {
-            "consistent": sum(item.status == "consistent" for item in findings),
-            "conflicts": sum(item.status == "conflict" for item in findings),
-            "insufficient_evidence": sum(item.status == "insufficient_evidence" for item in findings),
-        },
+        "summary": summarize(findings),
     }
 
 

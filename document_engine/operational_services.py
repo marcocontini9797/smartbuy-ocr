@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from typing import Any
 
-from core.operational_models import CrossValidationFinding, stable_id
+from core.operational_models import CrossValidationFinding
+from document_engine.cross_validation import cross_validate
 
 
 APE_REGISTRY = {
@@ -38,35 +38,5 @@ def validate_gis(*, latitude: float | None, longitude: float | None, expected_ci
 
 
 def cross_validate_facts(property_id: int, facts: list[dict[str, Any]]) -> list[CrossValidationFinding]:
-    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for fact in facts:
-        field = str(fact.get("fact_name") or fact.get("field") or "").strip()
-        if field:
-            grouped[field].append(fact)
-    findings: list[CrossValidationFinding] = []
-    for field, rows in grouped.items():
-        values = []
-        normalized = set()
-        evidence_ids = []
-        for row in rows:
-            raw = row.get("fact_value", row.get("value"))
-            value = raw.get("value") if isinstance(raw, dict) and "value" in raw else raw
-            source = row.get("source_type") or row.get("source") or "unknown"
-            values.append({"value": value, "source": source, "fact_id": row.get("id")})
-            if value is not None:
-                normalized.add(str(value).strip().casefold())
-            evidence_ids.extend(str(item) for item in (row.get("evidence_ids") or []))
-        distinct_sources = {str(item["source"]) for item in values if item["source"] != "unknown"}
-        if len(normalized) > 1:
-            status, action = "conflict", "Verificare le fonti e confermare il valore corretto"
-        elif len(normalized) == 1 and len(distinct_sources) >= 2:
-            status, action = "consistent", None
-        else:
-            status, action = "insufficient_evidence", "Acquisire una seconda fonte indipendente"
-        findings.append(CrossValidationFinding(
-            finding_id=stable_id("cross-validation", property_id, field, *sorted(normalized)),
-            property_id=property_id, field=field, status=status, values=values,
-            evidence_ids=sorted(set(evidence_ids)), recommended_action=action,
-        ))
-    return findings
-
+    """Backward-compatible entry point: facts only. See ``document_engine.cross_validation``."""
+    return cross_validate(property_id, facts=facts)

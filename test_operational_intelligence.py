@@ -43,9 +43,9 @@ def test_cross_validation_preserves_sources_and_flags_conflicts():
         {"id": "f4", "fact_name": "city", "fact_value": {"value": "bologna"}, "source_type": "gis"},
     ]
     findings = {item.field: item for item in cross_validate_facts(16, facts)}
-    assert findings["energy_class"].status == "conflict"
-    assert findings["energy_class"].evidence_ids == ["e1", "e2"]
-    assert findings["city"].status == "consistent"
+    assert findings["classe_energetica"].status == "conflict"
+    assert findings["classe_energetica"].evidence_ids == ["e1", "e2"]
+    assert findings["catasto.comune"].status == "consistent"
 
 
 def test_external_source_plan_is_truthful_about_access_and_region():

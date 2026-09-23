@@ -65,6 +65,22 @@ def get_client():
     return _client
 
 
+# Modelli che rifiutano il parametro `temperature` (es. modelli di reasoning):
+# scoperti alla prima risposta 400 e poi chiamati senza.
+_NO_TEMPERATURE_MODELS: set[str] = set()
+
+
+def _call_with_optional_temperature(method, *, model: str, temperature: float, **kwargs):
+    if model not in _NO_TEMPERATURE_MODELS:
+        try:
+            return method(model=model, temperature=temperature, **kwargs)
+        except Exception as exc:
+            if getattr(exc, "param", None) != "temperature" and "temperature" not in str(exc):
+                raise
+            _NO_TEMPERATURE_MODELS.add(model)
+    return method(model=model, **kwargs)
+
+
 def structured_call(
     *,
     system: str,
@@ -78,14 +94,16 @@ def structured_call(
     temperature=0 di default: per estrazione/classificazione/verifica vogliamo
     determinismo, non creatività. Alza la temperatura solo se stai facendo
     campionamenti multipli per self-consistency (vedi extraction.py).
+    I modelli che non accettano `temperature` vengono richiamati senza.
     """
     client = get_client()
-    response = client.responses.parse(
+    response = _call_with_optional_temperature(
+        client.responses.parse,
         model=model or MODEL,
+        temperature=temperature,
         instructions=system,
         input=user,
         text_format=output_model,
-        temperature=temperature,
     )
     parsed = response.output_parsed
     if parsed is None:
@@ -102,11 +120,12 @@ def structured_call(
 def free_text_call(*, system: str, user: str, temperature: float = 0.2, model: str | None = None) -> str:
     """Chiamata a testo libero (usata per la generazione della risposta RAG finale)."""
     client = get_client()
-    response = client.responses.create(
+    response = _call_with_optional_temperature(
+        client.responses.create,
         model=model or MODEL,
+        temperature=temperature,
         instructions=system,
         input=user,
-        temperature=temperature,
     )
     return response.output_text
 

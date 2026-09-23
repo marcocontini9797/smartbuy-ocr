@@ -119,8 +119,15 @@ class CrossValidationFinding(BaseModel):
     finding_id: str
     property_id: int
     field: str
-    status: Literal["consistent", "conflict", "insufficient_evidence"]
+    status: Literal["consistent", "compatible", "conflict", "extraction_unstable",
+                    "insufficient_evidence", "invalid", "attention"]
     values: list[dict[str, Any]]
     evidence_ids: list[str] = Field(default_factory=list)
     recommended_action: str | None = None
+    label: str | None = None
+    severity: Literal["high", "medium", "low"] = "low"
+    confidence: float = 0.0
+    canonical_value: str | None = None
+    sources: list[str] = Field(default_factory=list)
+    detail: str | None = None
 
