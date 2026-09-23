@@ -5,9 +5,14 @@ parallel persistence models or duplicate tables.
 """
 
 from fastapi import APIRouter, HTTPException, Query, Depends
+from typing import Literal
+
 from pydantic import BaseModel, Field
 from api.session import user_client
 from api.intelligence_service import build_property_intelligence
+from document_engine.cross_validation import strip_accents
+from document_engine.geocoding import geocode
+from document_engine.valuation import build_valuation
 
 
 router = APIRouter(prefix="/api/v1", tags=["workspace"])
@@ -40,6 +45,7 @@ class NewProperty(BaseModel):
     rooms: int | None = Field(default=None, ge=0, le=100)
     floor: int | None = Field(default=None, ge=-5, le=200)
     is_condominio: bool = True
+    property_type: Literal["residenziale", "commerciale"] = "residenziale"
 
 
 @router.post("/properties", status_code=201)
@@ -53,6 +59,57 @@ def create_property(payload: NewProperty, client=Depends(user_client)):
     if not response.data:
         raise HTTPException(status_code=502, detail="Unable to create the property")
     return response.data[0]
+
+
+class PropertyUpdate(BaseModel):
+    """Fields the agent can correct because they drive checklist and valuation."""
+    property_type: Literal["residenziale", "commerciale"] | None = None
+    is_condominio: bool | None = None
+    surface_m2: float | None = Field(default=None, gt=0, le=100000)
+    floor: int | None = Field(default=None, ge=-5, le=200)
+    elevator: bool | None = None
+    condition: Literal["Ristrutturato", "Buono", "Da ristrutturare"] | None = None
+    energy_class: str | None = Field(default=None, max_length=3)
+    asking_price: float | None = Field(default=None, ge=0)
+
+
+@router.patch("/properties/{property_id}")
+def update_property(property_id: int, payload: PropertyUpdate, client=Depends(user_client)):
+    get_property(property_id, client)
+    changes = payload.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    try:
+        response = client.table("properties").update(changes).eq("id", property_id).execute()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Unable to update the property") from exc
+    return response.data[0] if response.data else get_property(property_id, client)
+
+
+@router.get("/properties/{property_id}/valuation")
+def property_valuation(property_id: int, client=Depends(user_client)):
+    property_record = get_property(property_id, client)
+    if property_record.get("latitude") is None or property_record.get("longitude") is None:
+        try:
+            bbox = client.rpc("smartbuy_comune_bbox", {"p_city": strip_accents(str(property_record.get("city") or ""))}).execute().data
+        except Exception:
+            bbox = None
+        coordinates = geocode(property_record.get("address"), property_record.get("city"), bbox)
+        if coordinates:
+            property_record = {**property_record, "latitude": coordinates[0], "longitude": coordinates[1]}
+            try:
+                client.table("properties").update({"latitude": coordinates[0], "longitude": coordinates[1]})                     .eq("id", property_id).execute()
+            except Exception:
+                pass  # coordinates are only a cache
+    zone = None
+    if property_record.get("latitude") is not None:
+        try:
+            zone = client.rpc("smartbuy_omi_zone_quotes", {"p_lat": float(property_record["latitude"]),
+                                                           "p_lon": float(property_record["longitude"])}).execute().data
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail="OMI data unavailable") from exc
+    facts = _rows(client, "property_facts", property_id)
+    return {"property_id": property_id, **build_valuation(property_record=property_record, zone=zone, facts=facts)}
 
 
 @router.get("/properties")
