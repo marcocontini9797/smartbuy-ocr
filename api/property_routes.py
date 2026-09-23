@@ -86,6 +86,24 @@ def update_property(property_id: int, payload: PropertyUpdate, client=Depends(us
     return response.data[0] if response.data else get_property(property_id, client)
 
 
+@router.delete("/properties/{property_id}")
+def delete_property(property_id: int, client=Depends(user_client)):
+    """Delete the property with its documents, facts and history, then its stored files."""
+    get_property(property_id, client)
+    try:
+        result = client.rpc("smartbuy_delete_property", {"p_property_id": property_id}).execute().data or {}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Unable to delete the property") from exc
+    paths = result.get("storage_paths") or []
+    files_removed = True
+    if paths:
+        try:
+            client.storage.from_("smartbuy-documents").remove(paths)
+        except Exception:
+            files_removed = False  # rows are gone; orphan files do not affect the app
+    return {"deleted": True, "documents": result.get("documents", 0), "files_removed": files_removed}
+
+
 @router.get("/properties/{property_id}/valuation")
 def property_valuation(property_id: int, client=Depends(user_client)):
     property_record = get_property(property_id, client)
