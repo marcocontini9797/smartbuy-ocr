@@ -48,6 +48,76 @@ def _profile_facts(facts: list[dict]) -> list[dict]:
     return rows
 
 
+# The risk engine reports "information not collected" as open risks. For the
+# agent these are gaps to fill, not risks of the property: keep them apart,
+# in Italian, with the document that closes each one.
+_GAPS = {
+    "cadastral": ("Dati catastali da raccogliere", "Carica la visura catastale"),
+    "ownership": ("Proprietà e vincoli da verificare", "Carica la visura ipotecaria o l'atto di provenienza"),
+    "planning": ("Conformità urbanistica da valutare", "Carica titoli edilizi e certificato di agibilità"),
+    "energy": ("Dati energetici da raccogliere", "Carica l'APE"),
+    "condo": ("Dati condominiali da raccogliere", "Carica regolamento, ultimi verbali e spese condominiali"),
+    "location-risk": ("Rischi ambientali da valutare", "Verifica rischio idrogeologico e sismico della zona"),
+    "cost": ("Costi e spese da raccogliere", "Raccogli spese condominiali, imposte e costi ricorrenti"),
+    "cadastral-identifiers": ("Identificativi catastali mancanti", "Carica la visura catastale con foglio, particella e subalterno"),
+    "cadastral-plan": ("Planimetria catastale da recuperare", "Carica la planimetria catastale"),
+    "ownership-status": ("Titolarità da verificare", "Carica l'atto di provenienza"),
+    "encumbrances": ("Ipoteche e vincoli da verificare", "Carica la visura ipotecaria"),
+    "agibilità/abitabilità": ("Agibilità da verificare", "Carica il certificato di agibilità/abitabilità"),
+    "ape-certificate": ("APE da recuperare", "Carica l'APE"),
+    "condominium-regulation": ("Regolamento condominiale da recuperare", "Carica il regolamento di condominio"),
+    "environmental-constraints": ("Vincoli ambientali da verificare", "Verifica vincoli e rischi della zona"),
+    "identity": ("Identità dell'immobile da confermare", "Carica una visura catastale per identificare l'immobile"),
+    "docs": ("Documenti obbligatori mancanti", "Carica i documenti richiesti nella sezione Documenti e recupero"),
+    "missing-blockers": ("Informazioni bloccanti mancanti", "Completa le informazioni indicate prima di chiudere la due diligence"),
+}
+
+
+def _split_gaps(risks: list[dict], property_id: str) -> tuple[list[dict], list[dict]]:
+    real, gaps = [], []
+    for risk in risks:
+        risk_id = str(risk.get("risk_id", ""))
+        key = risk_id.removeprefix(f"{property_id}-").removesuffix("-missing")
+        if risk_id.endswith("-missing") or key.startswith("missing-"):
+            field = key.removeprefix("missing-")
+            title, action = _GAPS.get(key) or (
+                f"Dato da raccogliere: {field.replace('_', ' ')}",
+                "Carica un documento che riporti questo dato",
+            )
+            gaps.append({"gap_id": risk_id, "area": key, "severity": risk.get("severity"), "title": title, "action": action})
+        else:
+            real.append(_italian_risk(risk, key))
+    return real, gaps
+
+
+def _italian_risk(risk: dict, key: str) -> dict:
+    """Italian wording for the engine's real risks (conflicts, weak identity)."""
+    field = None
+    if key.startswith("conflict-"):
+        field = key.removeprefix("conflict-")
+        text = (f"Dati in conflitto: {field}", f"Le fonti riportano valori diversi per '{field}'.", "Verificare le fonti e confermare il valore corretto")
+    elif key.startswith("cadastral-") and key.endswith("-conflict"):
+        field = key.removeprefix("cadastral-").removesuffix("-conflict")
+        text = (f"Catasto non coerente: {field}", f"Il dato catastale '{field}' non coincide con le altre fonti.", "Confrontare visura, atto e scheda immobile")
+    elif key == "identity-weak":
+        text = ("Identità dell'immobile incerta", "Gli elementi disponibili non bastano a identificare l'immobile con certezza.", "Confermare foglio, particella e subalterno")
+    else:
+        return risk
+    title, description, action = text
+    return {**risk, "title": title, "description": description, "recommended_action": action}
+
+
+def _italian_summary(documents_analyzed: int, real_risks: list[dict], gaps: list[dict]) -> str:
+    if not documents_analyzed:
+        return ""
+    high = sum(1 for risk in real_risks if risk.get("severity") in {"critical", "high"})
+    parts = [f"{documents_analyzed} document{'o analizzato' if documents_analyzed == 1 else 'i analizzati'}."]
+    parts.append(f"{len(real_risks)} rischi aperti" + (f", di cui {high} importanti." if high else "."))
+    if gaps:
+        parts.append("Da raccogliere: " + "; ".join(gap["title"].lower() for gap in gaps) + ".")
+    return " ".join(parts)
+
+
 def build_property_intelligence(
     *,
     property_record: dict,
@@ -114,10 +184,12 @@ def build_property_intelligence(
     completed_documents = sum(
         1 for row in documents if str(row.get("processing_status", "")).lower() in {"completed", "processed", "analyzed"}
     )
+    real_risks, gaps = _split_gaps([risk.model_dump(mode="json") for risk in report.risks], property_id)
     return {
         "property": property_record,
         "profile": profile.model_dump(mode="json"),
-        "risks": [risk.model_dump(mode="json") for risk in report.risks],
+        "risks": real_risks,
+        "gaps": gaps,
         "facts": fact_rows,
         "evidence": provenance,
         "documents": documents,
@@ -127,9 +199,10 @@ def build_property_intelligence(
             "confidence": round(confidence, 4),
             "readiness_level": report.readiness.level.value,
             "readiness_score": report.readiness.score,
-            "open_risks": sum(1 for risk in report.risks if risk.status == "open"),
+            "open_risks": sum(1 for risk in real_risks if risk.get("status") == "open"),
+            "missing_items": len(gaps),
             "documents_analyzed": completed_documents,
-            "executive_summary": report.executive_summary,
+            "executive_summary": _italian_summary(completed_documents, real_risks, gaps),
         },
         "report": report.model_dump(mode="json"),
     }

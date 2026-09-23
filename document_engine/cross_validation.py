@@ -712,3 +712,42 @@ def summarize(findings: list[CrossValidationFinding]) -> dict[str, Any]:
         "attention": counts["attention"], "insufficient_evidence": counts["insufficient_evidence"],
         "blocking": len(blocking), "verified_ratio": round(verified / comparable, 3) if comparable else 0.0,
     }
+
+
+# ---------------------------------------------------------------------------
+# Double extraction
+# ---------------------------------------------------------------------------
+
+# Top-level extracted fields worth a second independent reading: an error here
+# changes who sells, what is sold or at what price.
+CRITICAL_EXTRACTION_FIELDS = {
+    "riferimento", "riferimenti_catastali", "intestatari", "codici_fiscali_intestatari",
+    "parte_venditrice", "promittente_venditore", "prezzo_eur", "canone_mensile_eur",
+    "classe_energetica", "superficie_utile_mq", "superficie_dichiarata_mq", "superficie_catastale_mq",
+    "data_emissione", "data_scadenza",
+}
+
+
+def _normalized_by_field(name: str, value: Any) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for canonical, raw in _expand(name, value):
+        claim = _claim(canonical, raw, source_key="-", source_label="-")
+        if claim:
+            out[canonical] = claim.normalized
+    return out
+
+
+def extraction_disagreements(first: dict[str, Any], second: dict[str, Any]) -> dict[str, Any]:
+    """Critical fields where two independent readings of the same document differ.
+
+    Returns {field: value from the second reading}. A value present in only one
+    reading is not counted: that is a completeness issue, not a contradiction.
+    """
+    disagreements: dict[str, Any] = {}
+    for name in sorted(CRITICAL_EXTRACTION_FIELDS & set(first) & set(second)):
+        a, b = _normalized_by_field(name, first[name]), _normalized_by_field(name, second[name])
+        for canonical in a.keys() & b.keys():
+            if SPECS[canonical].compare(a[canonical], b[canonical])[0] == DIFFERENT:
+                disagreements[name] = second[name]
+                break
+    return disagreements

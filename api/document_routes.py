@@ -51,24 +51,32 @@ def _field_value(value):
 
 def persist_document_facts(client, *, property_id: int, document: dict, analysis: dict,
                            extracted_fields: dict | None, default_confidence: float | None,
-                           model_name: str | None) -> int:
+                           model_name: str | None, second_reading: dict | None = None) -> int:
     """Store each extracted field as a property fact with its provenance.
 
     Provenance ids are generated here so each fact is linked to its own row
     without relying on the order of rows returned by a bulk insert.
     """
     provenance_rows, fact_rows = [], []
-    for name, raw in (extracted_fields or {}).items():
+    # A contradicting second reading is stored as another fact of the same
+    # document: cross-validation then reports the field as extraction_unstable.
+    readings = [(name, raw, False) for name, raw in (extracted_fields or {}).items()]
+    readings += [(name, raw, True) for name, raw in (second_reading or {}).items()]
+    for name, raw, is_second in readings:
         value, citation, confidence = _field_value(raw)
         if name in _NON_FACT_FIELDS or value in (None, "", [], {}):
             continue
         confidence = confidence if confidence is not None else default_confidence
+        if is_second:
+            citation = "Seconda lettura indipendente: valore diverso dalla prima"
+            confidence = round((confidence or 0.5) * 0.5, 3)
         provenance_id = str(uuid.uuid4())
         provenance_rows.append({
             "id": provenance_id, "analysis_result_id": analysis["id"], "document_id": document["id"],
             "property_id": property_id, "fact_name": name, "fact_value": {"value": value},
             "source_type": "document", "source_document": document.get("file_name"), "source_text": citation,
-            "extraction_method": "llm_structured_extraction_verified", "model_name": model_name,
+            "extraction_method": "llm_second_reading" if is_second else "llm_structured_extraction_verified",
+            "model_name": model_name,
             "confidence_score": confidence,
         })
         fact_rows.append({
@@ -154,6 +162,13 @@ async def analyze_property_document(
         property_id=property_id, filename=file.filename or "document",
         content=content, media_type=file.content_type,
     )
+    try:
+        duplicate = client.table("documents").select("id,file_name").eq("fascicolo_id", str(property_id))             .eq("content_sha256", intake.checksum_sha256).limit(1).execute().data
+    except Exception as exc:
+        raise HTTPException(502, "Document service unavailable") from exc
+    if duplicate:
+        raise HTTPException(409, f"Questo file è già stato caricato per questo immobile ({duplicate[0].get('file_name')}).")
+
     run = PipelineRun(
         property_id=property_id,
         component_versions={"intake": "1.0", "ocr": "1.0", "extraction": "1.0", "cross_validation": "1.0"},
@@ -185,10 +200,13 @@ async def analyze_property_document(
         raise HTTPException(result.status_code, detail)
 
     payload = json.loads(result.body)
+    if payload.get("document_type") in (None, "", "altro") and not payload.get("extracted_fields"):
+        raise HTTPException(422, "Il file non sembra un documento immobiliare riconosciuto (visura, APE, atto, planimetria…). Non è stato salvato.")
     now = datetime.now(timezone.utc).isoformat()
     document = _insert_one(client, "documents", {
         "agente_id": client.smartbuy_user_id,
         "fascicolo_id": str(property_id),
+        "content_sha256": intake.checksum_sha256,
         "file_name": file.filename,
         "document_type": payload.get("document_type"),
         "processing_status": "completed",
@@ -228,6 +246,7 @@ async def analyze_property_document(
         client, property_id=property_id, document=document, analysis=analysis,
         extracted_fields=payload.get("extracted_fields"),
         default_confidence=payload.get("extraction_confidence"), model_name=extraction_model,
+        second_reading=payload.get("extraction_disagreements"),
     )
     _best_effort_insert(client, "smartbuy_analysis_runs", run.model_dump(mode="json"))
     for name in ("ocr", "classification", "extraction"):

@@ -19,3 +19,15 @@ def test_uploaded_ape_and_atto_fields_reach_the_profile():
     assert profile["energy_certificate"]["energy_class"] == "C"
     assert profile["cadastral"]["foglio"] == "285"
     assert profile["cadastral"]["category"] == "A/2"
+
+
+def test_missing_information_is_a_gap_not_a_risk():
+    result = build_property_intelligence(
+        property_record={"id": 7, "address": "Via Zamboni 33", "city": "Bologna"},
+        facts=[], documents=[], analyses=[], provenance=[],
+    )
+    assert result["risks"] == []
+    assert result["summary"]["open_risks"] == 0
+    assert result["summary"]["missing_items"] == len(result["gaps"]) > 0
+    energy = next(g for g in result["gaps"] if g["area"] == "energy")
+    assert energy["title"] == "Dati energetici da raccogliere" and energy["action"] == "Carica l'APE"

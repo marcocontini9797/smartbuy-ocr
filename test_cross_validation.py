@@ -222,3 +222,13 @@ def test_real_visura_output_matches_property_sheet_without_false_conflicts():
     assert findings["indirizzo"].status == "consistent"
     assert findings["superficie_catastale_mq"].status == "insufficient_evidence"
     assert not any(f.status in {"conflict", "invalid"} for f in findings.values())
+
+
+def test_double_extraction_flags_only_real_contradictions():
+    from document_engine.cross_validation import extraction_disagreements
+    first = {"riferimento": {"foglio": "285", "subalterno": "2", "categoria": "A/2"}, "intestatari": ["Rossi Giovanni"],
+             "prezzo_eur": {"valore": "320.000", "confidence": 0.9}, "note_incertezza": ["x"]}
+    second = {"riferimento": {"foglio": "Fg. 285", "subalterno": "3", "categoria": "A2"}, "intestatari": ["Giovanni Rossi"],
+              "prezzo_eur": {"valore": "€ 320.000,00"}}
+    assert extraction_disagreements(first, second) == {"riferimento": second["riferimento"]}
+    assert extraction_disagreements(first, {"intestatari": ["Rossi Giovanni"]}) == {}

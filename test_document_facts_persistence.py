@@ -51,3 +51,18 @@ def test_no_facts_no_writes():
     assert persist_document_facts(client, property_id=1, document={"id": 1}, analysis={"id": "a"},
                                   extracted_fields={"tipo_documento": "ape"}, default_confidence=None, model_name=None) == 0
     assert client.store == {}
+
+
+def test_contradicting_second_reading_becomes_a_second_fact_of_the_same_document():
+    client = FakeClient()
+    saved = persist_document_facts(
+        client, property_id=16, document={"id": 41, "file_name": "visura.pdf", "document_type": "visura_catastale"},
+        analysis={"id": "a"}, extracted_fields={"intestatari": ["Rossi Giovanni"]},
+        default_confidence=0.9, model_name="m", second_reading={"intestatari": ["Rossi Giovanna"]},
+    )
+    assert saved == 2
+    second = [f for f in client.store["property_facts"] if f["fact_value"] == {"value": ["Rossi Giovanna"]}][0]
+    assert second["source_document_id"] == 41 and second["confidence_score"] == 0.45
+    from document_engine.cross_validation import cross_validate
+    findings = cross_validate(16, facts=client.store["property_facts"])
+    assert [f.status for f in findings if f.field == "proprietari"] == ["extraction_unstable"]

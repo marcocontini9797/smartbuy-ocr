@@ -127,9 +127,6 @@ async def ingest_document(
         doc_type = await _classify_document_type_via_openai(
             ocr_text
         )
-        print("========== OCR TESTO ==========")
-        print(ocr_text)
-        print("==============================")
 
         # ==============================
         # STEP 4 - Estrazione dati
@@ -137,17 +134,35 @@ async def ingest_document(
 
         extracted_data = None
         extraction_confidence = 0.0
+        extraction_disagreements = {}
 
 
         try:
 
-            from extraction import extract_document_verified
-
-
-            extracted_model, verification = extract_document_verified(
-                ocr_text,
-                doc_type
+            from concurrent.futures import ThreadPoolExecutor
+            from extraction import _apply_verification_penalty, extract_document, verify_extraction
+            from document_engine.cross_validation import (
+                CRITICAL_EXTRACTION_FIELDS, extraction_disagreements as compare_readings,
             )
+
+            first_reading = extract_document(ocr_text, doc_type)
+            first_fields = first_reading.model_dump(mode="json", exclude_none=True)
+            needs_second = bool(CRITICAL_EXTRACTION_FIELDS & {
+                key for key, value in first_fields.items() if value not in (None, "", [], {})
+            })
+            # Verification and the second independent reading of the critical
+            # fields are independent calls: run them in parallel.
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                verification_job = pool.submit(verify_extraction, ocr_text, first_reading)
+                second_job = pool.submit(extract_document, ocr_text, doc_type) if needs_second else None
+                verification = verification_job.result()
+                try:
+                    second_reading = second_job.result().model_dump(mode="json", exclude_none=True) if second_job else None
+                except Exception:
+                    traceback.print_exc()
+                    second_reading = None
+
+            extracted_model = _apply_verification_penalty(first_reading, verification)
             extracted_data = extracted_model.model_dump(
                 mode="json",
                 exclude_none=True
@@ -167,6 +182,13 @@ async def ingest_document(
                 1 - len(unsupported & set(filled)) / max(len(filled), 1),
                 3
             ) if filled else 0.0
+
+            # If the two readings contradict each other on a critical field,
+            # the field is flagged for review.
+            if second_reading:
+                extraction_disagreements = compare_readings(extracted_data, second_reading)
+                if extraction_disagreements:
+                    extraction_confidence = min(extraction_confidence, 0.6)
 
 
         except Exception:
@@ -277,6 +299,7 @@ async def ingest_document(
             ),
 
             "extracted_fields": extracted_data,
+            "extraction_disagreements": extraction_disagreements,
 
             "red_flags": red_flags_list,
 
