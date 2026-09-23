@@ -232,3 +232,15 @@ def test_double_extraction_flags_only_real_contradictions():
               "prezzo_eur": {"valore": "€ 320.000,00"}}
     assert extraction_disagreements(first, second) == {"riferimento": second["riferimento"]}
     assert extraction_disagreements(first, {"intestatari": ["Rossi Giovanni"]}) == {}
+
+
+def test_agent_correction_overrides_ai_readings_of_the_same_document():
+    facts = [
+        {**fact("energy_class", "B", doc=2, fid="a"), "verification_status": "unverified"},
+        {**fact("energy_class", "A2", doc=2, fid="b"), "verification_status": "corrected", "verified_value": {"value": "C"}},
+        {**fact("epgl", 74, doc=2, fid="c"), "verification_status": "rejected"},
+    ]
+    findings = by_field(cross_validate(1, facts=facts, today=TODAY))
+    assert findings["classe_energetica"].status == "insufficient_evidence"
+    assert findings["classe_energetica"].canonical_value == "C"
+    assert "epgl" not in findings

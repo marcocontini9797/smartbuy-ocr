@@ -17,6 +17,7 @@ if str(REPOSITORY_ROOT) not in sys.path:
 from smartbuy.document_facts_loader import load_document_facts_into_profile
 from smartbuy.profile import PropertyIntelligenceProfile
 from smartbuy.risk import RiskEnginePOC
+from document_engine.cross_validation import HUMAN_VERIFIED, effective_facts
 
 
 def _model(value: Any) -> Any:
@@ -34,7 +35,9 @@ _PROFILE_FACT_NAMES = {
 
 def _profile_facts(facts: list[dict]) -> list[dict]:
     rows = []
-    for row in facts:
+    for row in effective_facts(facts):
+        if row.get("verification_status") in HUMAN_VERIFIED:
+            row = {**row, "verification_status": "verified"}
         name = _PROFILE_FACT_NAMES.get(row.get("fact_name"))
         if not name:
             rows.append(row)
@@ -157,13 +160,16 @@ def build_property_intelligence(
         if isinstance(row_value, dict) and set(row_value) == {"value"}:
             row_value = row_value["value"]
         feedback_payload = {"field": name, "value": row_value}
+        row_status = row.get("verification_status")
         source_document = document_by_id.get(str(row.get("source_document_id")), {})
         source_provenance = provenance_by_id.get(str(row.get("provenance_id")), {})
         fact_rows.append({
             "id": row.get("id"),
             "field": name,
-            "value": _model(aggregate.current_value) if aggregate else row.get("fact_value"),
-            "status": aggregate.current_status.value if aggregate else row.get("verification_status"),
+            "value": _model(aggregate.current_value) if aggregate and row_status != "rejected" else row_value,
+            # The agent's own verdict on this row wins over the aggregate status.
+            "status": row_status if row_status in {"corrected", "rejected"} else (
+                aggregate.current_status.value if aggregate else row_status),
             "confidence": aggregate.current_confidence if aggregate else row.get("confidence_score"),
             "source_type": row.get("source_type"),
             "source_document_id": row.get("source_document_id"),

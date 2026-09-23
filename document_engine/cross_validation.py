@@ -409,10 +409,37 @@ def _claim(canonical: str, raw: Any, **meta: Any) -> Claim | None:
     return Claim(field=canonical, raw=raw, normalized=normalized, **meta)
 
 
+HUMAN_VERIFIED = {"verified", "corrected"}
+
+
+def effective_facts(facts: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Apply the agent's verdicts: they override the AI readings of the same document.
+
+    * rejected facts are dropped;
+    * if a document has a confirmed/corrected fact for a field, its other
+      (unverified) readings of that field are dropped and the verified value is used.
+    """
+    kept = [fact for fact in facts if fact.get("verification_status") != "rejected"]
+    verified_keys = {
+        (fact.get("source_document_id"), fact.get("fact_name"))
+        for fact in kept if fact.get("verification_status") in HUMAN_VERIFIED
+    }
+    result = []
+    for fact in kept:
+        key = (fact.get("source_document_id"), fact.get("fact_name"))
+        if fact.get("verification_status") in HUMAN_VERIFIED:
+            verified = fact.get("verified_value")
+            result.append({**fact, "fact_value": verified if verified is not None else fact.get("fact_value"),
+                           "confidence_score": 1.0})
+        elif key not in verified_keys:
+            result.append(fact)
+    return result
+
+
 def claims_from_facts(facts: Iterable[dict[str, Any]], provenance: dict[str, dict] | None = None) -> list[Claim]:
     claims: list[Claim] = []
     provenance = provenance or {}
-    for fact in facts:
+    for fact in effective_facts(facts):
         name = str(fact.get("fact_name") or fact.get("field") or "")
         prov = provenance.get(str(fact.get("provenance_id"))) or fact.get("provenance") or {}
         document_id = fact.get("source_document_id") or prov.get("document_id")
