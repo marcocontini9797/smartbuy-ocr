@@ -39,6 +39,7 @@ class NewProperty(BaseModel):
     surface_m2: float | None = Field(default=None, gt=0, le=100000)
     rooms: int | None = Field(default=None, ge=0, le=100)
     floor: int | None = Field(default=None, ge=-5, le=200)
+    is_condominio: bool = True
 
 
 @router.post("/properties", status_code=201)

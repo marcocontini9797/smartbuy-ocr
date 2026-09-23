@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from api.property_routes import _rows, get_property
 from api.session import user_client
 from core.operational_models import DocumentRequest
+from document_engine.checklist import build_checklist
 from document_engine.cross_validation import cross_validate, summarize
 from document_engine.operational_services import route_ape_source, validate_gis
 from document_engine.external_sources import REGISTRY, source_plan
@@ -52,8 +53,8 @@ def verification_plan(property_id: int, client=Depends(user_client)):
     }
 
 
-@router.get("/properties/{property_id}/cross-validation")
-def cross_validation(property_id: int, client=Depends(user_client)):
+def _validation_sources(property_id: int, client):
+    """Property, facts, documents and provenance used by checks and checklist."""
     property_record = get_property(property_id, client)
     facts = _rows(client, "property_facts", property_id)
     analyses = _rows(client, "document_analyses", property_id)
@@ -64,14 +65,31 @@ def cross_validation(property_id: int, client=Depends(user_client)):
         provenance = client.table("fact_provenance").select("*").in_("id", provenance_ids).execute().data or [] if provenance_ids else []
     except Exception as exc:
         raise HTTPException(502, "Cross-validation sources unavailable") from exc
-    findings = cross_validate(property_id, facts=facts, documents=documents,
-                              provenance={str(row["id"]): row for row in provenance},
+    return property_record, facts, documents, {str(row["id"]): row for row in provenance}
+
+
+def _findings(property_id: int, client):
+    property_record, facts, documents, provenance = _validation_sources(property_id, client)
+    findings = cross_validate(property_id, facts=facts, documents=documents, provenance=provenance,
                               property_record=property_record)
+    return property_record, documents, findings
+
+
+@router.get("/properties/{property_id}/cross-validation")
+def cross_validation(property_id: int, client=Depends(user_client)):
+    _, _, findings = _findings(property_id, client)
     return {
         "property_id": property_id,
         "findings": [item.model_dump(mode="json") for item in findings],
         "summary": summarize(findings),
     }
+
+
+@router.get("/properties/{property_id}/checklist")
+def sale_checklist(property_id: int, client=Depends(user_client)):
+    property_record, documents, findings = _findings(property_id, client)
+    return {"property_id": property_id,
+            **build_checklist(property_record=property_record, documents=documents, findings=findings)}
 
 
 @router.get("/properties/{property_id}/acquisition-plan")
