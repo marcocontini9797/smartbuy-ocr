@@ -74,3 +74,28 @@ def test_agent_correction_changes_the_red_flags():
     after = build_checklist(property_record=PROPERTY, documents=[ipotecaria], findings=[], facts=corrected, today=TODAY)
     assert items(before)["visura_ipotecaria"]["status"] == "problem"
     assert items(after)["visura_ipotecaria"]["status"] == "verified"
+
+
+def test_commercial_checklist_requires_agibilita_and_systems_and_asks_for_lease():
+    result = build_checklist(property_record={**PROPERTY, "property_type": "commerciale"}, documents=[], findings=[], today=TODAY)
+    by_key = items(result)
+    assert by_key["certificato_agibilita"]["requirement"] == "required"
+    assert by_key["dichiarazione_conformita_impianti"]["requirement"] == "required"
+    assert by_key["contratto_locazione"]["requirement"] == "leased"
+    assert result["summary"]["required_total"] == 8
+    assert "commerciale" in result["note"]
+
+
+def test_shop_registered_as_dwelling_is_a_problem():
+    visura = doc(1, "visura_catastale", {"riferimento": {"foglio": "1", "categoria": "A/2"}})
+    shop = build_checklist(property_record={**PROPERTY, "property_type": "commerciale"}, documents=[visura], findings=[], today=TODAY)
+    flat = build_checklist(property_record=PROPERTY, documents=[visura], findings=[], today=TODAY)
+    assert items(shop)["visura_catastale"]["status"] == "problem"
+    assert "A/2" in items(shop)["visura_catastale"]["issues"][0]["title"]
+    assert items(flat)["visura_catastale"]["status"] == "verified"
+
+
+def test_commercial_lease_red_flags_attach_to_the_lease():
+    lease = doc(5, "contratto_locazione", {"uso": "commerciale", "registrato": False, "canone_mensile_eur": {"valore": "1200"}})
+    result = build_checklist(property_record={**PROPERTY, "property_type": "commerciale"}, documents=[lease], findings=[], today=TODAY)
+    assert items(result)["contratto_locazione"]["status"] == "problem"

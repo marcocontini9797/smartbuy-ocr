@@ -54,6 +54,9 @@ MISSING: dict[str, Play] = {
         clauses=("Far redigere una relazione tecnica integrata prima del preliminare, o prevederla come condizione.",)),
     "regolamento_condominio": Play(
         questions=("Il regolamento di condominio pone limiti d'uso (animali, affitti brevi, attività)?",)),
+    "contratto_locazione": Play(
+        questions=("Il locale è affittato? A chi, con quale canone e fino a quando? Il contratto è registrato?",),
+        clauses=("Se il locale è locato: il venditore consegna contratto e ricevute di registrazione e dichiara canoni e morosità.",)),
     "verbale_assemblea_condominio": Play(
         questions=("Ci sono lavori straordinari deliberati o in programma? Ci sono spese condominiali arretrate?",),
         clauses=("Le spese straordinarie deliberate prima del rogito restano a carico del venditore.",),
@@ -93,8 +96,15 @@ ISSUES: dict[str, Play] = {
         clauses=("Spese straordinarie deliberate e arretrati condominiali a carico del venditore.",),
         price=("Spese condominiali straordinarie o arretrate incidono sul costo totale.",)),
     "locazione": Play(
-        questions=("L'immobile è locato? Il contratto è registrato? Quando scade?",),
-        clauses=("Immobile libero da persone e cose alla data del rogito.",)),
+        questions=("L'immobile è locato? Il contratto è registrato? Quando scade?",
+                   "Se l'uso è commerciale: il conduttore è stato informato del suo diritto di prelazione?"),
+        clauses=("Immobile libero da persone e cose alla data del rogito, oppure subentro nel contratto con canoni e cauzione indicati.",
+                 "Per locazioni commerciali: comunicazione al conduttore per la prelazione (art. 38 L. 392/1978) prima del rogito, a cura del venditore."),
+        price=("Un locale affittato si valuta sul canone e sulla durata residua; il rischio di riscatto del conduttore va considerato.",)),
+    "categoria_catastale": Play(
+        questions=("La destinazione d'uso legittima del locale corrisponde a quella catastale?",),
+        clauses=("Eventuale cambio di destinazione d'uso o di categoria a cura e spese del venditore prima del rogito.",),
+        price=("Una destinazione d'uso non coerente può limitare l'utilizzo e il valore dell'immobile.",)),
     "vincoli": Play(
         questions=("Su quali vincoli insiste l'immobile (paesaggistici, storico-artistici)?",),
         notary=("Verifica eventuali diritti di prelazione dello Stato o di enti.",)),

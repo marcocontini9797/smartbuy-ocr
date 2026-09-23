@@ -21,6 +21,7 @@ from typing import Any
 
 from core.operational_models import CrossValidationFinding
 from fascicolo import Fascicolo, aggiungi_al_fascicolo
+from document_engine.cross_validation import _expand, norm_categoria
 from red_flags import run_all_red_flags
 from schemas import SCHEMA_REGISTRY, TipoDocumento
 
@@ -31,7 +32,7 @@ class ChecklistSpec:
     title: str
     why: str
     provided_by: str
-    requirement: str  # "required" | "recommended" | "condominium"
+    requirement: str  # "required" | "recommended" | "condominium" | "leased"
     red_flag_categories: tuple[str, ...] = ()
 
 
@@ -61,6 +62,42 @@ SALE_CHECKLIST: tuple[ChecklistSpec, ...] = (
     ChecklistSpec("verbale_assemblea_condominio", "Ultimi verbali di assemblea", "Lavori deliberati, spese straordinarie e morosità da chiarire prima del rogito.",
                   "Amministratore", "condominium", ("condominio",)),
 )
+
+# Commercial unit (shop): agibilità and systems are needed to open a business,
+# the building titles must show the commercial use, and a lease in place
+# brings registration and the tenant's pre-emption right.
+COMMERCIAL_CHECKLIST: tuple[ChecklistSpec, ...] = (
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, l'intestatario e la categoria catastale (per un negozio di solito C/1).",
+                  "Venditore o tecnico", "required"),
+    ChecklistSpec("planimetria", "Planimetria catastale", "Serve a verificare la conformità catastale, da dichiarare nell'atto.",
+                  "Venditore", "required", ("conformita_catastale",)),
+    ChecklistSpec("ape", "APE – Attestato di prestazione energetica", "Obbligatorio anche per i locali commerciali, va allegato all'atto.",
+                  "Venditore", "required", ("ape",)),
+    ChecklistSpec("visura_ipotecaria", "Visura ipotecaria", "Mostra ipoteche, pignoramenti e altre formalità sul locale.",
+                  "Tecnico o notaio", "required", ("formalita_pregiudizievoli",)),
+    ChecklistSpec("atto_di_provenienza", "Atto di provenienza", "Dimostra come il venditore è diventato proprietario.",
+                  "Venditore", "required", ("provenienza",)),
+    ChecklistSpec("titolo_edilizio", "Titoli edilizi e destinazione d'uso", "Dimostrano la regolarità urbanistica e che il locale ha destinazione commerciale.",
+                  "Venditore o tecnico", "required", ("conformita_urbanistica", "vincoli")),
+    ChecklistSpec("certificato_agibilita", "Agibilità", "Senza agibilità per uso commerciale può essere impossibile aprire un'attività.",
+                  "Venditore", "required", ("agibilita",)),
+    ChecklistSpec("dichiarazione_conformita_impianti", "Conformità degli impianti", "Necessaria per l'uso aperto al pubblico e per le licenze.",
+                  "Venditore", "required", ("conformita_impianti",)),
+    ChecklistSpec("contratto_locazione", "Contratto di locazione in essere", "Se il locale è affittato: canone, durata, registrazione e diritto di prelazione del conduttore.",
+                  "Venditore", "leased", ("locazione",)),
+    ChecklistSpec("relazione_tecnica_integrata", "Relazione tecnica integrata", "Un tecnico verifica conformità catastale, urbanistica e destinazione d'uso.",
+                  "Tecnico incaricato", "recommended", ("conformita_tecnica",)),
+    ChecklistSpec("regolamento_condominio", "Regolamento di condominio", "Può vietare o limitare alcune attività commerciali nel locale.",
+                  "Amministratore", "condominium"),
+    ChecklistSpec("verbale_assemblea_condominio", "Ultimi verbali di assemblea", "Lavori deliberati, spese straordinarie e morosità da chiarire prima del rogito.",
+                  "Amministratore", "condominium", ("condominio",)),
+)
+
+# Cadastral categories consistent with each asset class.
+_CATEGORIES = {
+    "residenziale": {f"A/{n}" for n in (1, 2, 3, 4, 5, 6, 7, 8, 9, 11)},
+    "commerciale": {"C/1", "C/3", "A/10", "D/5", "D/8"},
+}
 
 _TYPE_ALIASES = {"ape_energy_certificate": "ape", "visura": "visura_catastale", "planimetria_catastale": "planimetria",
                  "ispezione_ipotecaria": "visura_ipotecaria", "atto_provenienza": "atto_di_provenienza",
@@ -153,6 +190,26 @@ def _finding_issue(finding: CrossValidationFinding) -> dict[str, Any] | None:
             "detail": finding.detail, "action": finding.recommended_action, "reference": None}
 
 
+def _category_issue(document: dict[str, Any], kind: str) -> dict[str, Any] | None:
+    """A shop registered as a dwelling (or the reverse) is a problem for the sale."""
+    fields = document.get("extracted_fields") or {}
+    categories = set()
+    for name in ("riferimento", "riferimenti_catastali"):
+        for canonical, raw in _expand(name, fields.get(name)):
+            if canonical == "catasto.categoria" and norm_categoria(raw):
+                categories.add(norm_categoria(raw))
+    wrong = sorted(c for c in categories if c not in _CATEGORIES[kind])
+    if not wrong:
+        return None
+    expected = "commerciale (es. C/1)" if kind == "commerciale" else "abitativa (A/1–A/9)"
+    return {"source": "verifica", "category": "categoria_catastale", "level": "problem", "severity": "high",
+            "title": f"Categoria catastale {', '.join(wrong)} non coerente con l'immobile",
+            "detail": f"Per un immobile {kind} ci si aspetta una categoria {expected}. "
+                      "Una destinazione catastale diversa può impedire l'uso previsto o richiedere un cambio d'uso.",
+            "action": "Verificare con un tecnico la destinazione d'uso legittima e l'eventuale cambio di categoria.",
+            "reference": None}
+
+
 def build_checklist(
     *,
     property_record: dict[str, Any],
@@ -162,8 +219,10 @@ def build_checklist(
     today: date | None = None,
 ) -> dict[str, Any]:
     is_condominium = property_record.get("is_condominio")
+    asset_kind = property_record.get("property_type") or "residenziale"
+    specs = COMMERCIAL_CHECKLIST if asset_kind == "commerciale" else SALE_CHECKLIST
     items: dict[str, ChecklistItem] = {}
-    for spec in SALE_CHECKLIST:
+    for spec in specs:
         applicable = spec.requirement != "condominium" or is_condominium is not False
         items[spec.key] = ChecklistItem(spec.key, spec.title, spec.why, spec.provided_by, spec.requirement, applicable)
 
@@ -176,11 +235,17 @@ def build_checklist(
                                           "storage_path": document.get("storage_path")})
 
     general: list[dict[str, Any]] = []
-    category_to_item = {category: spec.key for spec in SALE_CHECKLIST for category in spec.red_flag_categories}
+    category_to_item = {category: spec.key for spec in specs for category in spec.red_flag_categories}
     for flag in run_all_red_flags(build_fascicolo(documents, facts)):
         issue = _flag_issue(flag)
         target = items.get(category_to_item.get(flag.categoria, ""))
         (target.issues if target else general).append(issue)
+
+    for document in documents:
+        issue = _category_issue(document, asset_kind)
+        if issue:
+            target = items.get("visura_catastale") if document_kind(document.get("document_type")) == "visura_catastale" else None
+            (target.issues if target else general).append(issue)
 
     for finding in findings:
         issue = _finding_issue(finding)
@@ -237,5 +302,5 @@ def build_checklist(
             "to_check": len(to_check),
             "missing_required": len(missing_required),
         },
-        "note": "Checklist operativa per una compravendita residenziale: non sostituisce le verifiche del notaio.",
+        "note": f"Checklist operativa per la compravendita di un immobile {asset_kind}: non sostituisce le verifiche del notaio.",
     }
