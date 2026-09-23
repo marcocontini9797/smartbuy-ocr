@@ -64,3 +64,13 @@ def test_condominium_documents_not_applicable_outside_a_condominium():
     result = build_checklist(property_record={**PROPERTY, "is_condominio": False}, documents=[], findings=[], today=TODAY)
     assert items(result)["regolamento_condominio"]["applicable"] is False
     assert result["items"][-1]["key"] in {"regolamento_condominio", "verbale_assemblea_condominio"}
+
+
+def test_agent_correction_changes_the_red_flags():
+    ipotecaria = doc(2, "visura_ipotecaria", {"tipo_formalita": "Pignoramento immobiliare", "formalita_ancora_attiva": True})
+    corrected = [{"source_document_id": 2, "fact_name": "formalita_ancora_attiva", "verification_status": "corrected",
+                  "verified_value": {"value": False}}]
+    before = build_checklist(property_record=PROPERTY, documents=[ipotecaria], findings=[], today=TODAY)
+    after = build_checklist(property_record=PROPERTY, documents=[ipotecaria], findings=[], facts=corrected, today=TODAY)
+    assert items(before)["visura_ipotecaria"]["status"] == "problem"
+    assert items(after)["visura_ipotecaria"]["status"] == "verified"

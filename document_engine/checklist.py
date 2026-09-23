@@ -86,12 +86,40 @@ def document_kind(value: Any) -> str:
     return _TYPE_ALIASES.get(kind, kind)
 
 
-def build_fascicolo(documents: list[dict[str, Any]]) -> Fascicolo:
-    """Typed property file from the extracted fields of every analysed document."""
+def _agent_overrides(facts: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """{document_id: {field: corrected value or _REMOVED}} from the agent's verdicts."""
+    overrides: dict[str, dict[str, Any]] = {}
+    for fact in facts:
+        status = fact.get("verification_status")
+        if status not in {"corrected", "rejected"} or fact.get("source_document_id") is None:
+            continue
+        value = fact.get("verified_value")
+        if isinstance(value, dict) and set(value) == {"value"}:
+            value = value["value"]
+        overrides.setdefault(str(fact["source_document_id"]), {})[fact.get("fact_name")] = (
+            _REMOVED if status == "rejected" else value)
+    return overrides
+
+
+_REMOVED = object()
+
+
+def build_fascicolo(documents: list[dict[str, Any]], facts: list[dict[str, Any]] | None = None) -> Fascicolo:
+    """Typed property file from the extracted fields of every analysed document,
+    with the agent's corrections applied (a corrected field replaces the AI reading,
+    a rejected one is removed)."""
     fascicolo = Fascicolo(tipo_transazione="acquisto")
+    overrides = _agent_overrides(facts or [])
     for document in documents:
         kind = document_kind(document.get("document_type"))
         fields = document.get("extracted_fields")
+        if isinstance(fields, dict) and str(document.get("id")) in overrides:
+            fields = dict(fields)
+            for name, value in overrides[str(document.get("id"))].items():
+                if value is _REMOVED:
+                    fields.pop(name, None)
+                else:
+                    fields[name] = value
         try:
             tipo = TipoDocumento(kind)
         except ValueError:
@@ -110,7 +138,7 @@ def build_fascicolo(documents: list[dict[str, Any]]) -> Fascicolo:
 
 def _flag_issue(flag) -> dict[str, Any]:
     level = {"critica": "problem", "alta": "problem", "media": "to_check"}.get(flag.gravita, "info")
-    return {"source": "regola", "level": level, "severity": flag.gravita, "title": flag.titolo,
+    return {"source": "regola", "category": flag.categoria, "level": level, "severity": flag.gravita, "title": flag.titolo,
             "detail": flag.descrizione, "action": flag.azione_consigliata, "reference": flag.riferimento}
 
 
@@ -121,7 +149,7 @@ def _finding_issue(finding: CrossValidationFinding) -> dict[str, Any] | None:
         level = "to_check"
     else:
         return None
-    return {"source": "verifica", "level": level, "severity": finding.severity, "title": finding.label or finding.field,
+    return {"source": "verifica", "category": finding.field, "level": level, "severity": finding.severity, "title": finding.label or finding.field,
             "detail": finding.detail, "action": finding.recommended_action, "reference": None}
 
 
@@ -130,6 +158,7 @@ def build_checklist(
     property_record: dict[str, Any],
     documents: list[dict[str, Any]],
     findings: list[CrossValidationFinding],
+    facts: list[dict[str, Any]] | None = None,
     today: date | None = None,
 ) -> dict[str, Any]:
     is_condominium = property_record.get("is_condominio")
@@ -148,7 +177,7 @@ def build_checklist(
 
     general: list[dict[str, Any]] = []
     category_to_item = {category: spec.key for spec in SALE_CHECKLIST for category in spec.red_flag_categories}
-    for flag in run_all_red_flags(build_fascicolo(documents)):
+    for flag in run_all_red_flags(build_fascicolo(documents, facts)):
         issue = _flag_issue(flag)
         target = items.get(category_to_item.get(flag.categoria, ""))
         (target.issues if target else general).append(issue)
