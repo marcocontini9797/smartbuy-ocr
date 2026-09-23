@@ -23,6 +23,31 @@ def _model(value: Any) -> Any:
     return value.model_dump(mode="json") if hasattr(value, "model_dump") else value
 
 
+# Extraction schemas (schemas.py) name some fields differently from the names
+# the profile loader maps (energy_class, epgl, riferimento, intestatari).
+_PROFILE_FACT_NAMES = {
+    "classe_energetica": "energy_class",
+    "epgl_kwh_mq_anno": "epgl",
+    "riferimenti_catastali": "riferimento",
+}
+
+
+def _profile_facts(facts: list[dict]) -> list[dict]:
+    rows = []
+    for row in facts:
+        name = _PROFILE_FACT_NAMES.get(row.get("fact_name"))
+        if not name:
+            rows.append(row)
+            continue
+        value = row.get("fact_value")
+        if name == "riferimento" and isinstance(value, dict) and isinstance(value.get("value"), list):
+            if not value["value"]:
+                continue
+            value = {**value, "value": value["value"][0]}
+        rows.append({**row, "fact_name": name, "fact_value": value})
+    return rows
+
+
 def build_property_intelligence(
     *,
     property_record: dict,
@@ -49,7 +74,7 @@ def build_property_intelligence(
         },
         updated_at=datetime.now(timezone.utc).isoformat(),
     )
-    profile = load_document_facts_into_profile(profile, facts)
+    profile = load_document_facts_into_profile(profile, _profile_facts(facts))
     report = RiskEnginePOC().assess(profile)
 
     provenance_by_id = {str(row.get("id")): row for row in provenance if row.get("id") is not None}
