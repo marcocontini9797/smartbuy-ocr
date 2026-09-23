@@ -72,7 +72,7 @@ def test_account_property_queries_enforce_owner():
     class Query:
         def select(self,*a): return self
         def eq(self,k,v): seen.append((k,v)); return self
-        def order(self,*a): return self
+        def order(self,*a,**k): return self
         def limit(self,*a): return self
         def execute(self): return SimpleNamespace(data=[])
     class Client:

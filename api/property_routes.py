@@ -5,6 +5,7 @@ parallel persistence models or duplicate tables.
 """
 
 from fastapi import APIRouter, HTTPException, Query, Depends
+from pydantic import BaseModel, Field
 from api.session import user_client
 from api.intelligence_service import build_property_intelligence
 
@@ -31,10 +32,32 @@ def _optional_rows(client, table: str, property_id: int) -> list[dict]:
         return []
 
 
+class NewProperty(BaseModel):
+    address: str = Field(min_length=3, max_length=200)
+    city: str = Field(min_length=2, max_length=100)
+    asking_price: float | None = Field(default=None, ge=0)
+    surface_m2: float | None = Field(default=None, gt=0, le=100000)
+    rooms: int | None = Field(default=None, ge=0, le=100)
+    floor: int | None = Field(default=None, ge=-5, le=200)
+
+
+@router.post("/properties", status_code=201)
+def create_property(payload: NewProperty, client=Depends(user_client)):
+    data = {key: value for key, value in payload.model_dump().items() if value is not None}
+    data["address"], data["city"] = payload.address.strip(), payload.city.strip()
+    try:
+        response = client.table("properties").insert({**data, "user_id": client.smartbuy_user_id}).execute()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Unable to create the property") from exc
+    if not response.data:
+        raise HTTPException(status_code=502, detail="Unable to create the property")
+    return response.data[0]
+
+
 @router.get("/properties")
 def list_properties(limit: int = Query(100, ge=1, le=500), client=Depends(user_client)):
     try:
-        response = client.table("properties").select("*").eq("user_id", client.smartbuy_user_id).order("id").limit(limit).execute()
+        response = client.table("properties").select("*").eq("user_id", client.smartbuy_user_id).order("id", desc=True).limit(limit).execute()
         return {"items": response.data or [], "count": len(response.data or [])}
     except HTTPException:
         raise

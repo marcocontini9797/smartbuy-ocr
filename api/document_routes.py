@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -84,6 +85,51 @@ def persist_document_facts(client, *, property_id: int, document: dict, analysis
     except Exception as exc:
         raise HTTPException(502, "Unable to persist extracted facts") from exc
     return len(fact_rows)
+
+
+DOCUMENT_BUCKET = "smartbuy-documents"
+
+
+def store_original(client, *, property_id: int, document_id, filename: str, content: bytes,
+                   media_type: str | None) -> str | None:
+    """Keep the uploaded file in the private bucket under <user>/<property>/.
+
+    Returns the storage path, or None if storing failed: the analysis is still
+    valid, the agent just cannot reopen the original.
+    """
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", filename or "documento")[-120:]
+    path = f"{client.smartbuy_user_id}/{property_id}/{document_id}-{safe_name}"
+    try:
+        client.storage.from_(DOCUMENT_BUCKET).upload(
+            path, content, {"content-type": media_type or "application/octet-stream", "upsert": "true"},
+        )
+        client.table("documents").update({"storage_path": path}).eq("id", document_id).execute()
+    except Exception:
+        return None
+    return path
+
+
+@router.get("/properties/{property_id}/documents/{document_id}/file")
+def open_original(property_id: int, document_id: int, client=Depends(user_client)):
+    """Short-lived signed link to the original file of a document of this property."""
+    get_property(property_id, client)
+    try:
+        linked = client.table("document_analyses").select("document_id").eq("property_id", property_id)             .eq("document_id", str(document_id)).limit(1).execute().data
+        rows = client.table("documents").select("storage_path,file_name").eq("id", document_id).limit(1).execute().data
+    except Exception as exc:
+        raise HTTPException(502, "Document service unavailable") from exc
+    if not linked or not rows:
+        raise HTTPException(404, "Document not found")
+    if not rows[0].get("storage_path"):
+        raise HTTPException(404, "The original file was not stored for this document")
+    try:
+        signed = client.storage.from_(DOCUMENT_BUCKET).create_signed_url(rows[0]["storage_path"], 300)
+    except Exception as exc:
+        raise HTTPException(502, "Unable to open the original file") from exc
+    url = signed.get("signedURL") or signed.get("signedUrl") or signed.get("signed_url")
+    if not url:
+        raise HTTPException(502, "Unable to open the original file")
+    return {"url": url, "file_name": rows[0].get("file_name"), "expires_in": 300}
 
 
 @router.post("/properties/{property_id}/documents", status_code=201)
@@ -170,6 +216,10 @@ async def analyze_property_document(
         "warnings": (payload.get("red_flags") or []) + (payload.get("consistency_discrepancies") or []),
         "analyzed_at": payload.get("processed_at") or now,
     })
+    original_path = store_original(
+        client, property_id=property_id, document_id=document["id"], filename=file.filename or "documento",
+        content=content, media_type=file.content_type,
+    )
     try:
         from llm_client import MODEL as extraction_model
     except Exception:
@@ -199,6 +249,7 @@ async def analyze_property_document(
         "analysis": analysis,
         "result": payload,
         "facts_saved": facts_saved,
+        "original_saved": original_path is not None,
         "lineage": {
             "property_id": property_id,
             "document_id": document["id"],

@@ -21,5 +21,7 @@ def user_client(authorization: str | None = Header(default=None)):
     except Exception:
         raise HTTPException(401, "Session invalid or expired")
     client.postgrest.auth(token)
+    # Storage is built lazily from these headers: it must act as the user too.
+    client.options.headers["Authorization"] = f"Bearer {token}"
     client.smartbuy_user_id = str(result.user.id)
     return client
