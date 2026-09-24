@@ -76,12 +76,19 @@ _GAPS = {
 }
 
 
+# Gaps SmartBuy closes by itself: flood, landslide and seismic hazard come from
+# ISPRA and Protezione Civile (territory endpoint), no document needed.
+_CHECKED_FROM_PUBLIC_DATA = {"location-risk"}
+
+
 def _split_gaps(risks: list[dict], property_id: str) -> tuple[list[dict], list[dict]]:
     real, gaps = [], []
     for risk in risks:
         risk_id = str(risk.get("risk_id", ""))
         key = risk_id.removeprefix(f"{property_id}-").removesuffix("-missing")
         if risk_id.endswith("-missing") or key.startswith("missing-"):
+            if key in _CHECKED_FROM_PUBLIC_DATA:
+                continue
             field = key.removeprefix("missing-")
             title, action = _GAPS.get(key) or (
                 f"Dato da raccogliere: {field.replace('_', ' ')}",

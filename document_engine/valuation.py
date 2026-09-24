@@ -184,6 +184,7 @@ def build_valuation(
     yield_stats: dict[str, Any] | None = None,
     comparables: list[dict[str, Any]] | None = None,
     calibration: dict[str, Any] | None = None,
+    price_update: dict[str, Any] | None = None,
     document_problems: int = 0,
 ) -> dict[str, Any]:
     facts = facts or []
@@ -306,6 +307,15 @@ def build_valuation(
                 low, mid, high = low + add[0], mid + add[1], high + add[2]
             else:
                 result["caveats"].append("Nei documenti c'è un box o posto auto (C/6) non valutato: manca la superficie o la quotazione OMI.")
+
+        # OMI quotes describe their semester: bring them to the latest Istat house price quarter.
+        if price_update and price_update.get("factor"):
+            factor = price_update["factor"]
+            low, mid, high = low * factor, mid * factor, high * factor
+            result["price_update"] = price_update
+            result["adjustments"].append({"label": f"Aggiornamento prezzi Istat {price_update['area']} ({price_update['from']} → "
+                                                   f"{price_update['to']}{', provvisorio' if price_update.get('provisional') else ''})",
+                                          "pct": round(factor - 1, 4)})
 
         if quote.get("loc_min") and quote.get("loc_max"):
             rent_month = (quote["loc_min"] * surface, _mid(quote, "loc_min", "loc_max") * surface, quote["loc_max"] * surface)

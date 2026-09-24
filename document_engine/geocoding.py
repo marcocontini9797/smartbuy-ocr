@@ -52,3 +52,16 @@ def geocode(address: str | None, city: str | None,
             if same_municipality(_municipality(result), city):
                 return float(result["lat"]), float(result["lon"])
     return None
+
+
+def postcode(lat: float, lon: float) -> str | None:
+    """Postcode (CAP) at a position, from Nominatim reverse geocoding."""
+    try:
+        response = httpx.get("https://nominatim.openstreetmap.org/reverse",
+                             params={"lat": lat, "lon": lon, "format": "jsonv2", "zoom": 18, "addressdetails": 1},
+                             headers={"User-Agent": USER_AGENT, "Accept-Language": "it"}, timeout=10)
+        response.raise_for_status()
+        value = (response.json().get("address") or {}).get("postcode")
+    except Exception:
+        return None
+    return value if value and len(value) == 5 and value.isdigit() else None

@@ -24,5 +24,4 @@ evaluation/gold/*
 evaluation/reports/
 
 # Public data downloads (re-fetched by scripts/load_market_data.py)
-data/ntn/
-data/istat_comuni.csv
+data/

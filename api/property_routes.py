@@ -5,15 +5,17 @@ parallel persistence models or duplicate tables.
 """
 
 from fastapi import APIRouter, HTTPException, Query, Depends
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
 from pydantic import BaseModel, Field
 from api.session import user_client
 from api.intelligence_service import build_property_intelligence
 from document_engine.cross_validation import strip_accents
-from document_engine.geocoding import geocode
+from document_engine.geocoding import geocode, postcode
+from document_engine.hazards import point_hazards
 from document_engine.market import build_market_context
+from document_engine.territory import build_territory, ipab_area, price_update
 from document_engine.valuation import build_valuation, calibration_from_outcomes
 
 
@@ -111,8 +113,8 @@ def property_valuation(property_id: int, client=Depends(user_client)):
     return _valuation(property_id, client)
 
 
-def _valuation(property_id: int, client) -> dict:
-    property_record = get_property(property_id, client)
+def _located(client, property_id: int, property_record: dict) -> dict:
+    """Property with coordinates, geocoded inside its municipality when missing (cached on the row)."""
     if property_record.get("latitude") is None or property_record.get("longitude") is None:
         try:
             bbox = client.rpc("smartbuy_comune_bbox", {"p_city": strip_accents(str(property_record.get("city") or ""))}).execute().data
@@ -125,13 +127,22 @@ def _valuation(property_id: int, client) -> dict:
                 client.table("properties").update({"latitude": coordinates[0], "longitude": coordinates[1]})                     .eq("id", property_id).execute()
             except Exception:
                 pass  # coordinates are only a cache
-    zone = None
-    if property_record.get("latitude") is not None:
-        try:
-            zone = client.rpc("smartbuy_omi_zone_quotes", {"p_lat": float(property_record["latitude"]),
-                                                           "p_lon": float(property_record["longitude"])}).execute().data
-        except Exception as exc:
-            raise HTTPException(status_code=502, detail="OMI data unavailable") from exc
+    return property_record
+
+
+def _zone(client, property_record: dict) -> dict | None:
+    if property_record.get("latitude") is None:
+        return None
+    try:
+        return client.rpc("smartbuy_omi_zone_quotes", {"p_lat": float(property_record["latitude"]),
+                                                       "p_lon": float(property_record["longitude"])}).execute().data
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="OMI data unavailable") from exc
+
+
+def _valuation(property_id: int, client) -> dict:
+    property_record = _located(client, property_id, get_property(property_id, client))
+    zone = _zone(client, property_record)
     yield_stats = None
     if zone and zone.get("comune_cat"):
         typology = "5" if property_record.get("property_type") == "commerciale" else "20"
@@ -149,8 +160,17 @@ def _valuation(property_id: int, client) -> dict:
     except Exception:
         outcomes = []
     sale = next(iter(_optional_rows(client, "valuation_outcomes", property_id)), None)
+    update = None
+    if zone and kind == "residenziale":  # IPAB is a house price index: not used for shops
+        area = ipab_area(zone.get("area_territoriale"), next((q.get("comune") for q in zone.get("quotes") or []), None))
+        try:
+            index_rows = client.table("house_price_index").select("*").eq("ref_area", area).eq("purchase", "ALL").execute().data or []
+        except Exception:
+            index_rows = []
+        update = price_update(index_rows, zone.get("semestre"), area)
     valuation = build_valuation(property_record=property_record, zone=zone, facts=facts, yield_stats=yield_stats,
-                                comparables=comparables, calibration=calibration_from_outcomes(outcomes, property_record.get("city")))
+                                comparables=comparables, calibration=calibration_from_outcomes(outcomes, property_record.get("city")),
+                                price_update=update)
     return {"property_id": property_id, "comparables": sorted(comparables, key=lambda c: c.get("created_at") or ""),
             "sale": sale, **valuation, "market": _market(client, zone, kind, (valuation.get("surface") or {}).get("value"))}
 
@@ -169,6 +189,65 @@ def _market(client, zone: dict | None, kind: str, surface: float | None) -> dict
         return None
     return build_market_context(rows, kind=kind, capoluogo=comune["capoluogo"], provincia=comune["sigla_provincia"],
                                 comune=comune["nome"], surface=surface)
+
+
+HAZARD_CACHE_DAYS = 180
+
+
+def _point_hazards(client, property_id: int, lat: float, lon: float) -> tuple[dict | None, str | None]:
+    """ISPRA hazard at the property's position, cached per property until it moves or gets old."""
+    cached = next(iter(_optional_rows(client, "property_hazards", property_id)), None)
+    if cached and abs(cached["latitude"] - lat) < 1e-6 and abs(cached["longitude"] - lon) < 1e-6:
+        checked = datetime.fromisoformat(cached["checked_at"].replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) - checked < timedelta(days=HAZARD_CACHE_DAYS):
+            return {**cached["details"], "checked_at": cached["checked_at"]}, None
+    try:
+        details = point_hazards(lat, lon)
+    except Exception:
+        return None, "Servizio ISPRA non raggiungibile: pericolosità nel punto non verificata, riprova più tardi."
+    details["postcode"] = postcode(lat, lon)
+    row = {"property_id": property_id, "latitude": lat, "longitude": lon, "flood_level": details["flood_level"],
+           "landslide_level": details["landslide_level"], "details": details,
+           "checked_at": datetime.now(timezone.utc).isoformat()}
+    try:
+        client.table("property_hazards").upsert(row, on_conflict="property_id").execute()
+    except Exception:
+        pass  # cache only
+    return {**details, "checked_at": row["checked_at"]}, None
+
+
+@router.get("/properties/{property_id}/territory")
+def property_territory(property_id: int, client=Depends(user_client)):
+    """Seismic zone, flood/landslide hazard (point and municipality) and incomes of the area."""
+    property_record = _located(client, property_id, get_property(property_id, client))
+    zone = _zone(client, property_record)
+    comune = None
+    if zone and zone.get("comune_cat"):
+        try:
+            comune = (client.table("istat_comuni").select("*").eq("codice_catastale", zone["comune_cat"])
+                      .limit(1).execute().data or [None])[0]
+        except Exception:
+            comune = None
+    if not comune:
+        raise HTTPException(status_code=409, detail="Posizione non trovata: controlla indirizzo e comune nella scheda")
+
+    def one(table: str, column: str, value: str) -> dict | None:
+        try:
+            return (client.table(table).select("*").eq(column, value).limit(1).execute().data or [None])[0]
+        except Exception:
+            return None
+
+    lat, lon = float(property_record["latitude"]), float(property_record["longitude"])
+    point, point_error = _point_hazards(client, property_id, lat, lon)
+    try:
+        incomes = client.table("irpef_incomes").select("*").eq("codice_catastale", comune["codice_catastale"]).execute().data or []
+    except Exception:
+        incomes = []
+    territory = build_territory(seismic=one("seismic_zones", "codice_istat", comune["codice_istat"]),
+                                municipal_hazard=one("municipal_hazard", "codice_istat", comune["codice_istat"]),
+                                point=point, point_error=point_error, incomes=incomes,
+                                postcode=(point or {}).get("postcode"))
+    return {"property_id": property_id, "comune": comune["nome"], "latitude": lat, "longitude": lon, **territory}
 
 
 class NewComparable(BaseModel):
