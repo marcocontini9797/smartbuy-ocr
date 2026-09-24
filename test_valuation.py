@@ -29,20 +29,35 @@ def test_renovated_uses_ottimo_quotation():
     assert result["range"]["low"] == 290000 and result["range"]["high"] == 420000
 
 
-def test_commercial_combines_comparative_and_income():
+BOLOGNA_SHOP_YIELD = {"scope": "comune", "label": "BOLOGNA", "n": 41, "p25": 0.0544, "p50": 0.0593, "p75": 0.0667}
+
+
+def test_commercial_capitalises_zone_rent_at_the_municipal_market_yield():
     result = build_valuation(property_record={"property_type": "commerciale", "surface_m2": 60, "condition": "Buono",
-                                              "asking_price": 200000}, zone=ZONE)
+                                              "asking_price": 200000}, zone=ZONE, yield_stats=BOLOGNA_SHOP_YIELD)
     names = [m["name"] for m in result["methods"]]
-    assert names == ["Comparativo (quotazioni OMI negozi)", "Reddituale (capitalizzazione del canone)"]
+    assert names == ["Comparativo (quotazioni OMI negozi)", "Reddituale (capitalizzazione diretta del canone)"]
     income = result["methods"][1]
-    assert income["low"] == round(7.5 * 60 * 12 / 0.08, -3) and income["high"] == round(11.5 * 60 * 12 / 0.06, -3)
+    assert income["low"] == round(7.5 * 60 * 12 / 0.0667, -3)
+    assert income["high"] == round(11.5 * 60 * 12 / 0.0544, -3)
+    assert income["mid"] == round(9.5 * 60 * 12 / 0.0593, -3)
+    assert result["yield"]["zone_implied"] == round(9.5 * 12 / 2175, 4)
     assert result["asking_price"]["position"] in {"below", "within", "above"}
+
+
+def test_without_yield_statistics_the_fallback_is_declared():
+    result = build_valuation(property_record={"property_type": "commerciale", "surface_m2": 60}, zone=ZONE)
+    assert any("valore nazionale di riserva" in c for c in result["caveats"])
 
 
 def test_commercial_uses_actual_lease_rent_when_available():
     result = build_valuation(property_record={"property_type": "commerciale", "surface_m2": 60}, zone=ZONE,
-                             facts=[{"fact_name": "canone_mensile_eur", "fact_value": {"value": "1.200"}}])
-    assert "canone del contratto 1.200" in result["methods"][1]["explanation"]
+                             facts=[{"fact_name": "canone_mensile_eur", "fact_value": {"value": "1.200"}}], yield_stats=BOLOGNA_SHOP_YIELD)
+    income = result["methods"][1]
+    assert "canone del contratto in essere 1.200" in income["explanation"]
+    assert income["mid"] == round(14400 / 0.0593, -3)
+    comparative = result["methods"][0]
+    assert result["range"]["mid"] == round(0.4 * comparative["mid"] + 0.6 * income["mid"], -3)
 
 
 def test_missing_surface_or_zone_is_explained():
@@ -71,3 +86,35 @@ def test_divergent_methods_are_flagged():
                                  "compr_min": 1850, "compr_max": 3200, "loc_min": 16.5, "loc_max": 29}]}
     result = build_valuation(property_record={"property_type": "commerciale", "surface_m2": 60}, zone=prime)
     assert any("divergono" in c for c in result["caveats"])
+
+
+
+def test_cadastral_category_selects_the_omi_typology():
+    zone = {**ZONE, "quotes": ZONE["quotes"] + [
+        {"comune": "BOLOGNA", "cod_tip": "21", "tipologia": "Abitazioni di tipo economico", "stato": "NORMALE", "compr_min": 2000, "compr_max": 2500}]}
+    facts = [{"fact_name": "riferimento", "fact_value": {"value": {"categoria": "A/3", "foglio": "1"}}}]
+    result = build_valuation(property_record={"surface_m2": 100}, zone=zone, facts=facts)
+    assert "tipo economico" in result["methods"][0]["name"]
+    assert result["range"]["low"] == 200000
+
+
+def test_garage_in_the_documents_is_added_with_omi_box_values():
+    zone = {**ZONE, "quotes": ZONE["quotes"] + [
+        {"comune": "BOLOGNA", "cod_tip": "13", "tipologia": "Box", "stato": "NORMALE", "compr_min": 1500, "compr_max": 2350}]}
+    facts = [{"fact_name": "riferimenti_catastali", "fact_value": {"value": [
+        {"categoria": "A/2", "subalterno": "5"}, {"categoria": "C/6", "consistenza": "15 m²", "subalterno": "12"}]}}]
+    result = build_valuation(property_record={"surface_m2": 75, "condition": "Buono"}, zone=zone, facts=facts)
+    assert result["additions"][0]["low"] == 22000
+    assert result["range"]["low"] == 225000  # 75 m² x 2.700 + 15 m² x 1.500
+
+
+def test_residential_reports_market_rent_and_yield_at_asking_price():
+    result = build_valuation(property_record={"surface_m2": 75, "condition": "Buono", "asking_price": 245000}, zone=ZONE)
+    assert result["market_rent"]["mid"] == round(11.5 * 75, -1)
+    assert result["asking_price"]["gross_yield"] == round(round(11.5 * 75, -1) * 12 / 245000, 4)
+
+
+def test_confidence_lists_missing_inputs():
+    result = build_valuation(property_record={"surface_m2": 75}, zone=ZONE)
+    assert result["confidence"]["level"] == "bassa"
+    assert "categoria catastale da visura" in result["confidence"]["missing"]

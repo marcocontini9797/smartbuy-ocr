@@ -126,8 +126,17 @@ def property_valuation(property_id: int, client=Depends(user_client)):
                                                            "p_lon": float(property_record["longitude"])}).execute().data
         except Exception as exc:
             raise HTTPException(status_code=502, detail="OMI data unavailable") from exc
+    yield_stats = None
+    if zone and zone.get("comune_cat"):
+        typology = "5" if property_record.get("property_type") == "commerciale" else "20"
+        try:
+            yield_stats = client.rpc("smartbuy_omi_yield_stats", {"p_comune_amm": zone["comune_cat"],
+                                                                  "p_cod_tip": typology}).execute().data
+        except Exception:
+            yield_stats = None  # the valuation declares its fallback
     facts = _rows(client, "property_facts", property_id)
-    return {"property_id": property_id, **build_valuation(property_record=property_record, zone=zone, facts=facts)}
+    return {"property_id": property_id,
+            **build_valuation(property_record=property_record, zone=zone, facts=facts, yield_stats=yield_stats)}
 
 
 @router.get("/properties")
