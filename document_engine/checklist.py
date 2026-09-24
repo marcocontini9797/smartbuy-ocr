@@ -22,6 +22,7 @@ from typing import Any
 from core.operational_models import CrossValidationFinding
 from fascicolo import Fascicolo, aggiungi_al_fascicolo
 from document_engine.cross_validation import _expand, norm_categoria
+from document_engine.typology import Typology, contract_of, typology_of
 from red_flags import run_all_red_flags
 from schemas import SCHEMA_REGISTRY, TipoDocumento
 
@@ -36,6 +37,9 @@ class ChecklistSpec:
     red_flag_categories: tuple[str, ...] = ()
 
 
+_MORTGAGE_WHY = ("Mostra ipoteche, pignoramenti, provenienza e altre formalità sull'immobile. Da fare prima della proposta: "
+                 "circa 20–35 € di tributi (Sister o servizio online con SPID), il notaio la rifà solo prima del rogito.")
+
 # Residential sale. Operational checklist, not a statement of legal duties:
 # the notary decides what is needed for the deed.
 SALE_CHECKLIST: tuple[ChecklistSpec, ...] = (
@@ -45,8 +49,8 @@ SALE_CHECKLIST: tuple[ChecklistSpec, ...] = (
                   "Venditore", "required", ("conformita_catastale",)),
     ChecklistSpec("ape", "APE – Attestato di prestazione energetica", "È obbligatorio e va allegato all'atto di vendita.",
                   "Venditore", "required", ("ape",)),
-    ChecklistSpec("visura_ipotecaria", "Visura ipotecaria", "Mostra ipoteche, pignoramenti e altre formalità che gravano sull'immobile.",
-                  "Tecnico o notaio", "required", ("formalita_pregiudizievoli",)),
+    ChecklistSpec("visura_ipotecaria", "Ispezione ipotecaria aggiornata", _MORTGAGE_WHY,
+                  "Agente (Sister o SPID) o notaio", "required", ("formalita_pregiudizievoli",)),
     ChecklistSpec("atto_di_provenienza", "Atto di provenienza", "Dimostra come il venditore è diventato proprietario (acquisto, donazione, successione).",
                   "Venditore", "required", ("provenienza",)),
     ChecklistSpec("titolo_edilizio", "Titoli edilizi", "Dimostrano che l'immobile è regolare dal punto di vista urbanistico.",
@@ -73,8 +77,8 @@ COMMERCIAL_CHECKLIST: tuple[ChecklistSpec, ...] = (
                   "Venditore", "required", ("conformita_catastale",)),
     ChecklistSpec("ape", "APE – Attestato di prestazione energetica", "Obbligatorio anche per i locali commerciali, va allegato all'atto.",
                   "Venditore", "required", ("ape",)),
-    ChecklistSpec("visura_ipotecaria", "Visura ipotecaria", "Mostra ipoteche, pignoramenti e altre formalità sul locale.",
-                  "Tecnico o notaio", "required", ("formalita_pregiudizievoli",)),
+    ChecklistSpec("visura_ipotecaria", "Ispezione ipotecaria aggiornata", _MORTGAGE_WHY,
+                  "Agente (Sister o SPID) o notaio", "required", ("formalita_pregiudizievoli",)),
     ChecklistSpec("atto_di_provenienza", "Atto di provenienza", "Dimostra come il venditore è diventato proprietario.",
                   "Venditore", "required", ("provenienza",)),
     ChecklistSpec("titolo_edilizio", "Titoli edilizi e destinazione d'uso", "Dimostrano la regolarità urbanistica e che il locale ha destinazione commerciale.",
@@ -93,11 +97,71 @@ COMMERCIAL_CHECKLIST: tuple[ChecklistSpec, ...] = (
                   "Amministratore", "condominium", ("condominio",)),
 )
 
-# Cadastral categories consistent with each asset class.
-_CATEGORIES = {
-    "residenziale": {f"A/{n}" for n in (1, 2, 3, 4, 5, 6, 7, 8, 9, 11)},
-    "commerciale": {"C/1", "C/3", "A/10", "D/5", "D/8"},
-}
+# Garage or parking space for sale: no APE (exempt), no agibilità of its own.
+BOX_CHECKLIST: tuple[ChecklistSpec, ...] = (
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il box, l'intestatario e la categoria (C/6 o C/7).",
+                  "Venditore o tecnico", "required"),
+    ChecklistSpec("planimetria", "Planimetria catastale", "Serve a verificare la conformità catastale, da dichiarare nell'atto.",
+                  "Venditore", "required", ("conformita_catastale",)),
+    ChecklistSpec("visura_ipotecaria", "Ispezione ipotecaria aggiornata", _MORTGAGE_WHY,
+                  "Agente (Sister o SPID) o notaio", "required", ("formalita_pregiudizievoli",)),
+    ChecklistSpec("atto_di_provenienza", "Atto di provenienza", "Dimostra come il venditore è diventato proprietario; "
+                  "verifica anche vincoli di pertinenza (box legati a un appartamento, legge Tognoli).",
+                  "Venditore", "required", ("provenienza",)),
+    ChecklistSpec("titolo_edilizio", "Titoli edilizi", "Dimostrano che il box è regolare dal punto di vista urbanistico.",
+                  "Venditore o tecnico", "recommended", ("conformita_urbanistica", "vincoli")),
+    ChecklistSpec("regolamento_condominio", "Regolamento di condominio", "Regole d'uso dell'autorimessa e delle parti comuni.",
+                  "Amministratore", "condominium"),
+    ChecklistSpec("verbale_assemblea_condominio", "Ultimi verbali di assemblea", "Lavori deliberati e spese da chiarire prima del rogito.",
+                  "Amministratore", "condominium", ("condominio",)),
+)
+
+# Lease of a home: the owner must deliver the APE and prove who can let the flat.
+LEASE_CHECKLIST: tuple[ChecklistSpec, ...] = (
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica l'immobile e verifica che chi affitta ne sia proprietario o abbia titolo.",
+                  "Proprietario o tecnico", "required"),
+    ChecklistSpec("ape", "APE – Attestato di prestazione energetica", "Obbligatorio: la classe energetica va nell'annuncio e il contratto "
+                  "deve dare atto che l'inquilino ha ricevuto l'APE.", "Proprietario", "required", ("ape",)),
+    ChecklistSpec("planimetria", "Planimetria catastale", "Descrive i locali consegnati e va spesso allegata al contratto.",
+                  "Proprietario", "recommended", ("conformita_catastale",)),
+    ChecklistSpec("dichiarazione_conformita_impianti", "Conformità degli impianti", "Impianti a norma: sicurezza dell'inquilino e responsabilità del proprietario.",
+                  "Proprietario", "recommended", ("conformita_impianti",)),
+    ChecklistSpec("certificato_agibilita", "Agibilità", "Attesta che l'immobile è utilizzabile per abitarci.",
+                  "Proprietario", "recommended", ("agibilita",)),
+    ChecklistSpec("visura_ipotecaria", "Ispezione ipotecaria", "Un pignoramento trascritto prima del contratto può renderlo inopponibile "
+                  "all'acquirente all'asta: l'inquilino rischia di dover lasciare l'immobile.", "Agente (Sister o SPID)", "recommended",
+                  ("formalita_pregiudizievoli",)),
+    ChecklistSpec("regolamento_condominio", "Regolamento di condominio", "Divieti e regole (animali, uso delle parti comuni, affitti brevi) "
+                  "che l'inquilino deve rispettare.", "Amministratore", "condominium"),
+)
+
+# Lease of a commercial unit: the use must allow the tenant's business.
+COMMERCIAL_LEASE_CHECKLIST: tuple[ChecklistSpec, ...] = (
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, chi lo affitta e la categoria catastale.",
+                  "Proprietario o tecnico", "required"),
+    ChecklistSpec("ape", "APE – Attestato di prestazione energetica", "Obbligatorio anche per i locali commerciali in affitto.",
+                  "Proprietario", "required", ("ape",)),
+    ChecklistSpec("titolo_edilizio", "Titoli edilizi e destinazione d'uso", "L'attività dell'inquilino deve essere compatibile con la destinazione d'uso legittima.",
+                  "Proprietario o tecnico", "required", ("conformita_urbanistica", "vincoli")),
+    ChecklistSpec("certificato_agibilita", "Agibilità", "Senza agibilità l'inquilino può non ottenere le autorizzazioni per l'attività.",
+                  "Proprietario", "required", ("agibilita",)),
+    ChecklistSpec("dichiarazione_conformita_impianti", "Conformità degli impianti", "Necessaria per l'uso aperto al pubblico e per le licenze.",
+                  "Proprietario", "required", ("conformita_impianti",)),
+    ChecklistSpec("planimetria", "Planimetria catastale", "Descrive i locali consegnati.", "Proprietario", "recommended", ("conformita_catastale",)),
+    ChecklistSpec("visura_ipotecaria", "Ispezione ipotecaria", "Un pignoramento anteriore al contratto può renderlo inopponibile all'acquirente all'asta.",
+                  "Agente (Sister o SPID)", "recommended", ("formalita_pregiudizievoli",)),
+    ChecklistSpec("regolamento_condominio", "Regolamento di condominio", "Può vietare o limitare alcune attività commerciali nel locale.",
+                  "Amministratore", "condominium"),
+)
+
+
+def specs_for(property_record: dict[str, Any]) -> tuple[ChecklistSpec, ...]:
+    typology, contract = typology_of(property_record), contract_of(property_record)
+    if contract == "affitto":
+        return COMMERCIAL_LEASE_CHECKLIST if typology.asset == "commerciale" else LEASE_CHECKLIST
+    if typology.key == "box":
+        return BOX_CHECKLIST
+    return COMMERCIAL_CHECKLIST if typology.asset == "commerciale" else SALE_CHECKLIST
 
 _TYPE_ALIASES = {"ape_energy_certificate": "ape", "visura": "visura_catastale", "planimetria_catastale": "planimetria",
                  "ispezione_ipotecaria": "visura_ipotecaria", "atto_provenienza": "atto_di_provenienza",
@@ -190,7 +254,11 @@ def _finding_issue(finding: CrossValidationFinding) -> dict[str, Any] | None:
             "detail": finding.detail, "action": finding.recommended_action, "reference": None}
 
 
-def _category_issue(document: dict[str, Any], kind: str) -> dict[str, Any] | None:
+# Cellars, garages and parking spaces sold with the main unit.
+_PERTINENZE = frozenset({"C/2", "C/6", "C/7"})
+
+
+def _category_issue(document: dict[str, Any], typology: Typology) -> dict[str, Any] | None:
     """A shop registered as a dwelling (or the reverse) is a problem for the sale."""
     fields = document.get("extracted_fields") or {}
     categories = set()
@@ -198,13 +266,14 @@ def _category_issue(document: dict[str, Any], kind: str) -> dict[str, Any] | Non
         for canonical, raw in _expand(name, fields.get(name)):
             if canonical == "catasto.categoria" and norm_categoria(raw):
                 categories.add(norm_categoria(raw))
-    wrong = sorted(c for c in categories if c not in _CATEGORIES[kind])
-    if not wrong:
-        return None
-    expected = "commerciale (es. C/1)" if kind == "commerciale" else "abitativa (A/1–A/9)"
+    allowed = typology.categories | (_PERTINENZE if typology.key != "box" else frozenset())
+    wrong = sorted(c for c in categories if c not in allowed)
+    if not wrong or not categories - _PERTINENZE and typology.key != "box":
+        return None  # only pertinenze listed: the main unit is not in this document
+    expected = ", ".join(sorted(typology.categories)) if len(typology.categories) <= 4 else "abitativa (A/1–A/9)"
     return {"source": "verifica", "category": "categoria_catastale", "level": "problem", "severity": "high",
             "title": f"Categoria catastale {', '.join(wrong)} non coerente con l'immobile",
-            "detail": f"Per un immobile {kind} ci si aspetta una categoria {expected}. "
+            "detail": f"Per {typology.label.lower()} ci si aspetta una categoria {expected}. "
                       "Una destinazione catastale diversa può impedire l'uso previsto o richiedere un cambio d'uso.",
             "action": "Verificare con un tecnico la destinazione d'uso legittima e l'eventuale cambio di categoria.",
             "reference": None}
@@ -219,8 +288,8 @@ def build_checklist(
     today: date | None = None,
 ) -> dict[str, Any]:
     is_condominium = property_record.get("is_condominio")
-    asset_kind = property_record.get("property_type") or "residenziale"
-    specs = COMMERCIAL_CHECKLIST if asset_kind == "commerciale" else SALE_CHECKLIST
+    typology, contract = typology_of(property_record), contract_of(property_record)
+    specs = specs_for(property_record)
     items: dict[str, ChecklistItem] = {}
     for spec in specs:
         applicable = spec.requirement != "condominium" or is_condominium is not False
@@ -242,7 +311,7 @@ def build_checklist(
         (target.issues if target else general).append(issue)
 
     for document in documents:
-        issue = _category_issue(document, asset_kind)
+        issue = _category_issue(document, typology)
         if issue:
             target = items.get("visura_catastale") if document_kind(document.get("document_type")) == "visura_catastale" else None
             (target.issues if target else general).append(issue)
@@ -302,5 +371,8 @@ def build_checklist(
             "to_check": len(to_check),
             "missing_required": len(missing_required),
         },
-        "note": f"Checklist operativa per la compravendita di un immobile {asset_kind}: non sostituisce le verifiche del notaio.",
+        "typology": typology.key, "contract": contract,
+        "note": (f"Checklist operativa per l'affitto di {typology.label.lower()}: non sostituisce la verifica del contratto."
+                 if contract == "affitto" else
+                 f"Checklist operativa per la compravendita di {typology.label.lower()}: non sostituisce le verifiche del notaio."),
     }

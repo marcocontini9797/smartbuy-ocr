@@ -31,7 +31,7 @@ def test_missing_documents_become_questions_and_clauses():
 
 def test_seizure_is_a_blocker():
     result = brief([doc(2, "visura_ipotecaria", {"tipo_formalita": "Pignoramento immobiliare", "formalita_ancora_attiva": True})])
-    assert result["blockers"] and result["blockers"][0]["document"] == "Visura ipotecaria"
+    assert result["blockers"] and result["blockers"][0]["document"] == "Ispezione ipotecaria aggiornata"
     assert "Cancellazione di ipoteche" in texts(result["clauses"])
 
 

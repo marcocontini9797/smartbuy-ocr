@@ -17,10 +17,12 @@ from document_engine.geocoding import geocode, postcode
 from document_engine.hazards import point_hazards
 from document_engine.market import build_market_context
 from document_engine.territory import build_territory, fiaip_reference, ipab_area, price_update, year_update
+from document_engine.typology import TYPOLOGIES, typology_of
 from document_engine.valuation import build_valuation, calibration_from_outcomes
 
 
 router = APIRouter(prefix="/api/v1", tags=["workspace"])
+Typology = Literal["appartamento", "villa", "box", "negozio", "ufficio", "capannone", "magazzino"]
 
 
 def _rows(client, table: str, property_id: int) -> list[dict]:
@@ -50,12 +52,25 @@ class NewProperty(BaseModel):
     rooms: int | None = Field(default=None, ge=0, le=100)
     floor: int | None = Field(default=None, ge=-5, le=200)
     is_condominio: bool = True
-    property_type: Literal["residenziale", "commerciale"] = "residenziale"
+    property_type: Literal["residenziale", "commerciale"] | None = None
+    typology: Typology | None = None
+    contract: Literal["vendita", "affitto"] = "vendita"
+
+
+def _with_asset_class(data: dict) -> dict:
+    """Typology decides the asset class; an old client sending only property_type gets the default typology."""
+    if data.get("typology"):
+        data["property_type"] = TYPOLOGIES[data["typology"]].asset
+    elif data.get("property_type"):
+        data["typology"] = typology_of({"property_type": data["property_type"]}).key
+    return data
 
 
 @router.post("/properties", status_code=201)
 def create_property(payload: NewProperty, client=Depends(user_client)):
-    data = {key: value for key, value in payload.model_dump().items() if value is not None}
+    data = _with_asset_class({key: value for key, value in payload.model_dump().items() if value is not None})
+    data.setdefault("typology", "appartamento")
+    data.setdefault("property_type", "residenziale")
     data["address"], data["city"] = payload.address.strip(), payload.city.strip()
     try:
         response = client.table("properties").insert({**data, "user_id": client.smartbuy_user_id}).execute()
@@ -69,6 +84,8 @@ def create_property(payload: NewProperty, client=Depends(user_client)):
 class PropertyUpdate(BaseModel):
     """Fields the agent can correct because they drive checklist and valuation."""
     property_type: Literal["residenziale", "commerciale"] | None = None
+    typology: Typology | None = None
+    contract: Literal["vendita", "affitto"] | None = None
     is_condominio: bool | None = None
     surface_m2: float | None = Field(default=None, gt=0, le=100000)
     floor: int | None = Field(default=None, ge=-5, le=200)
@@ -87,6 +104,7 @@ def update_property(property_id: int, payload: PropertyUpdate, client=Depends(us
         raise HTTPException(status_code=400, detail="Nothing to update")
     if changes.get("fiaip_zone") == "":
         changes["fiaip_zone"] = None  # "non indicata" in the picker
+    changes = _with_asset_class(changes)
     try:
         response = client.table("properties").update(changes).eq("id", property_id).execute()
     except Exception as exc:
@@ -149,10 +167,10 @@ def _valuation(property_id: int, client) -> dict:
     zone = _zone(client, property_record)
     yield_stats = None
     if zone and zone.get("comune_cat"):
-        typology = "5" if property_record.get("property_type") == "commerciale" else "20"
+        omi_code = (typology_of(property_record).omi_codes or ("20",))[0]
         try:
             yield_stats = client.rpc("smartbuy_omi_yield_stats", {"p_comune_amm": zone["comune_cat"],
-                                                                  "p_cod_tip": typology}).execute().data
+                                                                  "p_cod_tip": omi_code}).execute().data
         except Exception:
             yield_stats = None  # the valuation declares its fallback
     facts = _rows(client, "property_facts", property_id)
@@ -166,20 +184,22 @@ def _valuation(property_id: int, client) -> dict:
     sale = next(iter(_optional_rows(client, "valuation_outcomes", property_id)), None)
     update = reference = None
     zones_list: list[dict] = []
-    if zone and kind == "residenziale":  # IPAB is a house price index: not used for shops
+    typology = typology_of(property_record)
+    if zone and typology.key in {"appartamento", "villa"}:  # IPAB is a house price index: homes only
         area = ipab_area(zone.get("area_territoriale"), next((q.get("comune") for q in zone.get("quotes") or []), None))
         try:
             index_rows = client.table("house_price_index").select("*").eq("ref_area", area).eq("purchase", "ALL").execute().data or []
         except Exception:
             index_rows = []
         update = price_update(index_rows, zone.get("semestre"), area)
-        zones_list, reference = _fiaip(client, zone, property_record, index_rows, area)
+        if typology.key == "appartamento":  # FIAIP "abitazioni" values: flats, not villas
+            zones_list, reference = _fiaip(client, zone, property_record, index_rows, area)
     valuation = build_valuation(property_record=property_record, zone=zone, facts=facts, yield_stats=yield_stats,
                                 comparables=comparables, calibration=calibration_from_outcomes(outcomes, property_record.get("city")),
                                 price_update=update, reference=reference)
     return {"property_id": property_id, "comparables": sorted(comparables, key=lambda c: c.get("created_at") or ""),
             "sale": sale, **valuation, "fiaip_zones": zones_list, "fiaip_zone": property_record.get("fiaip_zone"),
-            "market": _market(client, zone, kind, (valuation.get("surface") or {}).get("value"))}
+            "market": _market(client, zone, typology, (valuation.get("surface") or {}).get("value"))}
 
 
 def _fiaip(client, zone: dict, property_record: dict, index_rows: list[dict], area: str) -> tuple[list[dict], dict | None]:
@@ -203,7 +223,7 @@ def _fiaip(client, zone: dict, property_record: dict, index_rows: list[dict], ar
                                        year_update(index_rows, year, area))
 
 
-def _market(client, zone: dict | None, kind: str, surface: float | None) -> dict | None:
+def _market(client, zone: dict | None, typology, surface: float | None) -> dict | None:
     """Transaction volumes of the municipality's area (context, never blocks the valuation)."""
     if not zone or not zone.get("comune_cat"):
         return None
@@ -215,8 +235,8 @@ def _market(client, zone: dict | None, kind: str, surface: float | None) -> dict
         rows = client.table("market_volumes").select("*").eq("provincia", comune["sigla_provincia"]).execute().data or []
     except Exception:
         return None
-    return build_market_context(rows, kind=kind, capoluogo=comune["capoluogo"], provincia=comune["sigla_provincia"],
-                                comune=comune["nome"], surface=surface)
+    return build_market_context(rows, kind=typology.asset, capoluogo=comune["capoluogo"], provincia=comune["sigla_provincia"],
+                                comune=comune["nome"], surface=surface, series=typology.volume_series, label=typology.volume_label)
 
 
 HAZARD_CACHE_DAYS = 180

@@ -99,3 +99,33 @@ def test_commercial_lease_red_flags_attach_to_the_lease():
     lease = doc(5, "contratto_locazione", {"uso": "commerciale", "registrato": False, "canone_mensile_eur": {"valore": "1200"}})
     result = build_checklist(property_record={**PROPERTY, "property_type": "commerciale"}, documents=[lease], findings=[], today=TODAY)
     assert items(result)["contratto_locazione"]["status"] == "problem"
+
+
+def test_residential_lease_needs_ape_and_visura_not_the_deed():
+    result = build_checklist(property_record={**PROPERTY, "contract": "affitto"}, documents=[], findings=[], today=TODAY)
+    required = {i["key"] for i in result["items"] if i["requirement"] == "required"}
+    assert required == {"visura_catastale", "ape"}
+    assert "atto_di_provenienza" not in items(result) and result["contract"] == "affitto"
+    assert result["note"].startswith("Checklist operativa per l'affitto di appartamento")
+
+
+def test_commercial_lease_requires_use_agibilita_and_systems():
+    record = {**PROPERTY, "property_type": "commerciale", "typology": "ufficio", "contract": "affitto"}
+    required = {i["key"] for i in build_checklist(property_record=record, documents=[], findings=[], today=TODAY)["items"]
+                if i["requirement"] == "required"}
+    assert {"titolo_edilizio", "certificato_agibilita", "dichiarazione_conformita_impianti"} <= required
+
+
+def test_box_sale_has_no_ape():
+    result = build_checklist(property_record={**PROPERTY, "typology": "box"}, documents=[], findings=[], today=TODAY)
+    assert "ape" not in items(result) and result["summary"]["required_total"] == 4
+
+
+def test_pertinenze_in_the_visura_are_not_a_category_problem():
+    visura = doc(9, "visura_catastale", {"riferimenti_catastali": [{"foglio": "1", "particella": "2", "subalterno": "3", "categoria": "A/2"},
+                                                                    {"foglio": "1", "particella": "2", "subalterno": "9", "categoria": "C/6"}]})
+    result = build_checklist(property_record=PROPERTY, documents=[visura], findings=[], today=TODAY)
+    assert not any("Categoria catastale" in issue["title"] for issue in items(result)["visura_catastale"]["issues"])
+    office = build_checklist(property_record={**PROPERTY, "typology": "ufficio", "property_type": "commerciale"},
+                             documents=[visura], findings=[], today=TODAY)
+    assert any("A/2" in issue["title"] for issue in items(office)["visura_catastale"]["issues"])

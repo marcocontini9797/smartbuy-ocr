@@ -26,6 +26,7 @@ from statistics import median, quantiles
 from typing import Any
 
 from document_engine.cross_validation import effective_facts, norm_categoria, norm_comune, norm_energy_class, parse_number
+from document_engine.typology import contract_of, typology_of
 
 # Used only when the municipality/province/Italy yield statistics are unavailable.
 FALLBACK_RETAIL_YIELD = {"p25": 0.055, "p50": 0.063, "p75": 0.076, "scope": "italia", "label": "Italia (valore di riserva)", "n": 0}
@@ -189,8 +190,11 @@ def build_valuation(
     document_problems: int = 0,
 ) -> dict[str, Any]:
     facts = facts or []
-    kind = property_record.get("property_type") or "residenziale"
-    result: dict[str, Any] = {"property_type": kind, "status": "unavailable", "methods": [], "adjustments": [],
+    typology = typology_of(property_record)
+    kind = typology.asset
+    contract = contract_of(property_record)
+    result: dict[str, Any] = {"property_type": kind, "typology": typology.key, "typology_label": typology.label,
+                              "contract": contract, "status": "unavailable", "methods": [], "adjustments": [],
                               "additions": [], "caveats": []}
 
     if not zone or not zone.get("quotes"):
@@ -218,12 +222,18 @@ def build_valuation(
                          "note": "Le quotazioni OMI si riferiscono alla superficie lorda (commerciale)."}
 
     if kind == "commerciale":
-        quote, state = _quote(quotes, "5", wanted_state)
+        quote, state = None, wanted_state
+        for code in typology.omi_codes:
+            quote, state = _quote(quotes, code, wanted_state)
+            if quote:
+                break
         if not quote:
-            result["reason"] = "Nessuna quotazione OMI per negozi in questa zona."
+            result["reason"] = f"Nessuna quotazione OMI per {typology.label.lower()} in questa zona."
             return result
+        segment = quote["tipologia"].lower()
+        result["segment"] = segment
         comp = (quote["compr_min"] * surface, quote["compr_max"] * surface)
-        comparative = {"name": "Comparativo (quotazioni OMI negozi)", "low": _round(comp[0]), "high": _round(comp[1]),
+        comparative = {"name": f"Comparativo (quotazioni OMI {segment})", "low": _round(comp[0]), "high": _round(comp[1]),
                        "mid": _round(_mid(quote, "compr_min", "compr_max") * surface),
                        "explanation": f"{_euro(quote['compr_min'])}–{_euro(quote['compr_max'])} €/m² × {surface:g} m² "
                                       f"(stato {_STATE_LABEL.get(state, state)})"}
@@ -242,13 +252,17 @@ def build_valuation(
         if rent:
             income = {"name": "Reddituale (capitalizzazione diretta del canone)",
                       "low": _round(rent[0] / yields["p75"]), "high": _round(rent[2] / yields["p25"]), "mid": _round(rent[1] / yields["p50"]),
-                      "explanation": f"{rent_text}, diviso il rendimento lordo di mercato dei negozi "
+                      "explanation": f"{rent_text}, diviso il rendimento lordo di mercato ({segment}) "
                                      f"({yields['label']}: {_pct(yields['p25'])}–{_pct(yields['p75'])}, mediana {_pct(yields['p50'])})"}
             result["methods"].append(income)
             result["yield"] = {**yields, "zone_implied": round(_mid(quote, "loc_min", "loc_max") * 12 / _mid(quote, "compr_min", "compr_max"), 4)
                                if quote.get("loc_min") else None, "source": "quotazioni OMI (canone annuo / prezzo)"}
             if not yield_stats:
                 result["caveats"].append("Rendimento di mercato non disponibile per il comune: usato il valore nazionale di riserva.")
+        if quote.get("loc_min") and quote.get("loc_max"):
+            result["market_rent"] = {"low": round(quote["loc_min"] * surface, -1), "mid": round(_mid(quote, "loc_min", "loc_max") * surface, -1),
+                                     "high": round(quote["loc_max"] * surface, -1),
+                                     "explanation": f"{quote['loc_min']:g}–{quote['loc_max']:g} €/m² al mese (OMI {segment})".replace(".", ",")}
         # A lease on file is specific evidence: it weighs more than the zone average.
         weights = [0.4, 0.6] if actual_rent and len(result["methods"]) == 2 else [1 / len(result["methods"])] * len(result["methods"])
         low = sum(w * m["low"] for w, m in zip(weights, result["methods"]))
@@ -269,16 +283,22 @@ def build_valuation(
             (bool(yield_stats) and yields.get("scope") != "italia", "rendimento di mercato locale"),
         ])
     else:
+        is_box = typology.key == "box"
         category = next((u["categoria"] for u in units if u["categoria"] and u["categoria"].startswith("A/")), None)
-        typology = _TYPOLOGY_BY_CATEGORY.get(category or "", "20")
-        quote, state = _quote(quotes, typology, wanted_state)
-        if not quote and typology != "20":
+        omi_code = typology.omi_codes[0] if typology.omi_codes else _TYPOLOGY_BY_CATEGORY.get(category or "", "20")
+        quote, state = _quote(quotes, omi_code, wanted_state)
+        for code in typology.omi_codes[1:]:
+            if quote:
+                break
+            quote, state = _quote(quotes, code, wanted_state)
+        if not quote and not is_box and omi_code != "20":
             quote, state = _quote(quotes, "20", wanted_state)
-            result["caveats"].append(f"Nessuna quotazione OMI per la tipologia della categoria {category}: usate le abitazioni civili.")
-        if not quote:
+            result["caveats"].append(f"Nessuna quotazione OMI {'per ville e villini' if typology.key == 'villa' else f'per la tipologia della categoria {category}'}"
+                                     ": usate le abitazioni civili.")
+        if not quote and not is_box:
             quote, state = _quote(quotes, "21", wanted_state)
         if not quote:
-            result["reason"] = "Nessuna quotazione OMI residenziale in questa zona."
+            result["reason"] = f"Nessuna quotazione OMI per {typology.label.lower() if is_box else 'abitazioni'} in questa zona."
             return result
         base = (quote["compr_min"] * surface, _mid(quote, "compr_min", "compr_max") * surface, quote["compr_max"] * surface)
         result["methods"].append({
@@ -286,7 +306,7 @@ def build_valuation(
             "mid": _round(base[1]),
             "explanation": f"{_euro(quote['compr_min'])}–{_euro(quote['compr_max'])} €/m² × {surface:g} m² "
                            f"(stato {_STATE_LABEL.get(state, state)}"
-                           + (f", tipologia scelta dalla categoria catastale {category})" if category else ")"),
+                           + (f", tipologia scelta dalla categoria catastale {category})" if category and not typology.omi_codes else ")"),
         })
         # OMI quotes describe their semester: bring them to the latest Istat house price quarter.
         update_note = None
@@ -304,7 +324,7 @@ def build_valuation(
                                       "explanation": reference["explanation"]})
             base = tuple((a + b) / 2 for a, b in zip(base, ref))
             result["reference_weight"] = 0.5
-        result["adjustments"] = _residential_adjustments(property_record, energy_class)
+        result["adjustments"] = [] if is_box else _residential_adjustments(property_record, energy_class)
         total = max(-MAX_TOTAL_ADJUSTMENT, min(MAX_TOTAL_ADJUSTMENT, sum(a["pct"] for a in result["adjustments"])))
         low, mid, high = (value * (1 + total) for value in base)
         if result["adjustments"]:
@@ -313,7 +333,7 @@ def build_valuation(
             result["adjustments"].append(update_note)
 
         box_quote, _ = _quote(quotes, "13", "NORMALE")
-        for unit in units:
+        for unit in [] if is_box else units:
             if unit["categoria"] != "C/6":
                 continue
             box_surface = parse_number(unit.get("consistenza"))
@@ -337,8 +357,8 @@ def build_valuation(
             (surface_source is not None, "superficie"),
             (bool(property_record.get("condition")), "stato di conservazione"),
             (category is not None, "categoria catastale da visura"),
-            (energy_class is not None, "classe energetica"),
-            (property_record.get("floor") is not None, "piano"),
+            (energy_class is not None or is_box, "classe energetica"),
+            (property_record.get("floor") is not None or is_box, "piano"),
         ])
 
     comps = comparables_method(comparables or [], surface, zone.get("area_territoriale"))
@@ -382,6 +402,17 @@ def build_valuation(
     result["range"] = {"low": _round(low), "mid": _round(mid), "high": _round(high),
                        "per_sqm_low": round(low / surface), "per_sqm_high": round(high / surface), "uncalibrated": uncalibrated}
     asking = parse_number(property_record.get("asking_price"))
+    if contract == "affitto":
+        rent = result.get("market_rent")
+        if rent:
+            result["rent_range"] = {"low": rent["low"], "mid": rent["mid"], "high": rent["high"],
+                                    "per_sqm_low": round(rent["low"] / surface, 1), "per_sqm_high": round(rent["high"] / surface, 1)}
+        else:
+            result["caveats"].append("Nessun canone OMI per questa tipologia e zona: il canone va stimato con annunci e contratti simili.")
+        if asking and rent:
+            position = "below" if asking < rent["low"] else "above" if asking > rent["high"] else "within"
+            result["asking_rent"] = {"value": asking, "position": position, "vs_mid_pct": round((asking - rent["mid"]) / rent["mid"], 3)}
+        return result
     if asking:
         position = "below" if asking < low else "above" if asking > high else "within"
         result["asking_price"] = {"value": asking, "position": position, "vs_mid_pct": round((asking - mid) / mid, 3)}

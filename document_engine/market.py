@@ -40,8 +40,11 @@ def _window(row: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def build_market_context(rows: list[dict[str, Any]], *, kind: str, capoluogo: bool, provincia: str,
-                         comune: str | None, surface: float | None) -> dict[str, Any] | None:
-    series, label = SERIES_BY_KIND.get(kind, SERIES_BY_KIND["residenziale"])
+                         comune: str | None, surface: float | None, series: str | None = None,
+                         label: str | None = None) -> dict[str, Any] | None:
+    """kind picks the default series; series/label override it (typology-specific volumes)."""
+    default_series, default_label = SERIES_BY_KIND.get(kind, SERIES_BY_KIND["residenziale"])
+    series, label = series or default_series, label or default_label
     by_series = {row["series"]: row for row in rows if row.get("capoluogo") == capoluogo}
     main = by_series.get(series)
     window = _window(main) if main else None
@@ -57,7 +60,7 @@ def build_market_context(rows: list[dict[str, Any]], *, kind: str, capoluogo: bo
     complete = {year: total for year, total in years.items() if sum(1 for p, _ in history if p.startswith(year)) == 4}
     result["yearly"] = [{"year": year, "ntn": round(total)} for year, total in sorted(complete.items())]
 
-    if kind == "residenziale" and surface:
+    if series == "RES" and surface:
         _, code, size_label = next(item for item in SIZE_CLASSES if surface <= item[0])
         size_row = by_series.get(f"RES_{code}")
         size_window = _window(size_row) if size_row else None

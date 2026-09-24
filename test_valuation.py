@@ -161,3 +161,25 @@ def test_applied_calibration_scales_the_range_and_keeps_the_uncalibrated_estimat
     assert result["range"]["uncalibrated"]["mid"] == 285000
     assert result["range"]["mid"] == 256000
     assert result["adjustments"][-1]["pct"] == -0.1
+
+
+def test_office_uses_the_omi_office_quotation():
+    zone = {**ZONE, "quotes": ZONE["quotes"] + [
+        {"comune": "BOLOGNA", "cod_tip": "6", "tipologia": "Uffici", "stato": "NORMALE", "compr_min": 2000, "compr_max": 2600, "loc_min": 8, "loc_max": 11}]}
+    result = build_valuation(property_record={"property_type": "commerciale", "typology": "ufficio", "surface_m2": 100}, zone=zone)
+    assert result["methods"][0]["name"] == "Comparativo (quotazioni OMI uffici)" and result["methods"][0]["low"] == 200000
+    assert result["market_rent"]["low"] == 800 and result["typology_label"] == "Ufficio"
+
+
+def test_lease_reports_the_rent_and_compares_the_asking_rent():
+    result = build_valuation(property_record={"property_type": "residenziale", "contract": "affitto", "surface_m2": 80,
+                                              "condition": "Buono", "asking_price": 1300}, zone=ZONE)
+    assert result["rent_range"] == {"low": 760, "mid": 920, "high": 1080, "per_sqm_low": 9.5, "per_sqm_high": 13.5}
+    assert result["asking_rent"]["position"] == "above" and "asking_price" not in result
+
+
+def test_box_uses_the_box_quotation_without_home_corrections():
+    zone = {**ZONE, "quotes": ZONE["quotes"] + [
+        {"comune": "BOLOGNA", "cod_tip": "13", "tipologia": "Box", "stato": "NORMALE", "compr_min": 1800, "compr_max": 2400, "loc_min": 7, "loc_max": 9}]}
+    result = build_valuation(property_record={"typology": "box", "surface_m2": 15, "floor": 0}, zone=zone)
+    assert result["range"]["low"] == 27000 and result["range"]["high"] == 36000 and not result["adjustments"]
