@@ -5,6 +5,7 @@ parallel persistence models or duplicate tables.
 """
 
 from fastapi import APIRouter, HTTPException, Query, Depends
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -12,7 +13,7 @@ from api.session import user_client
 from api.intelligence_service import build_property_intelligence
 from document_engine.cross_validation import strip_accents
 from document_engine.geocoding import geocode
-from document_engine.valuation import build_valuation
+from document_engine.valuation import build_valuation, calibration_from_outcomes
 
 
 router = APIRouter(prefix="/api/v1", tags=["workspace"])
@@ -106,6 +107,10 @@ def delete_property(property_id: int, client=Depends(user_client)):
 
 @router.get("/properties/{property_id}/valuation")
 def property_valuation(property_id: int, client=Depends(user_client)):
+    return _valuation(property_id, client)
+
+
+def _valuation(property_id: int, client) -> dict:
     property_record = get_property(property_id, client)
     if property_record.get("latitude") is None or property_record.get("longitude") is None:
         try:
@@ -135,8 +140,91 @@ def property_valuation(property_id: int, client=Depends(user_client)):
         except Exception:
             yield_stats = None  # the valuation declares its fallback
     facts = _rows(client, "property_facts", property_id)
-    return {"property_id": property_id,
-            **build_valuation(property_record=property_record, zone=zone, facts=facts, yield_stats=yield_stats)}
+    comparables = _optional_rows(client, "property_comparables", property_id)
+    kind = property_record.get("property_type") or "residenziale"
+    try:
+        outcomes = (client.table("valuation_outcomes").select("*").eq("property_type", kind)
+                    .neq("property_id", property_id).execute().data or [])
+    except Exception:
+        outcomes = []
+    sale = next(iter(_optional_rows(client, "valuation_outcomes", property_id)), None)
+    return {"property_id": property_id, "comparables": sorted(comparables, key=lambda c: c.get("created_at") or ""),
+            "sale": sale,
+            **build_valuation(property_record=property_record, zone=zone, facts=facts, yield_stats=yield_stats,
+                              comparables=comparables, calibration=calibration_from_outcomes(outcomes, property_record.get("city")))}
+
+
+class NewComparable(BaseModel):
+    kind: Literal["annuncio", "venduto"]
+    surface_m2: float = Field(gt=0, le=100000)
+    price: float = Field(gt=0, le=1_000_000_000)
+    source_url: str | None = Field(default=None, max_length=1000)
+    address: str | None = Field(default=None, max_length=200)
+    condition: str | None = Field(default=None, max_length=50)
+    floor: int | None = Field(default=None, ge=-5, le=200)
+    note: str | None = Field(default=None, max_length=500)
+
+
+@router.post("/properties/{property_id}/comparables", status_code=201)
+def add_comparable(property_id: int, payload: NewComparable, client=Depends(user_client)):
+    get_property(property_id, client)
+    if payload.source_url and not payload.source_url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=422, detail="Il link deve iniziare con http:// o https://")
+    per_sqm = payload.price / payload.surface_m2
+    if not 100 <= per_sqm <= 50000:
+        raise HTTPException(status_code=422, detail=f"Prezzo al m² fuori scala ({per_sqm:,.0f} €/m²): controlla prezzo e superficie")
+    try:
+        response = client.table("property_comparables").insert(
+            {**payload.model_dump(exclude_none=True), "property_id": property_id}).execute()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Unable to save the comparable") from exc
+    return response.data[0]
+
+
+@router.delete("/properties/{property_id}/comparables/{comparable_id}")
+def delete_comparable(property_id: int, comparable_id: str, client=Depends(user_client)):
+    get_property(property_id, client)
+    try:
+        response = (client.table("property_comparables").delete().eq("id", comparable_id)
+                    .eq("property_id", property_id).execute())
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Unable to delete the comparable") from exc
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Comparable not found")
+    return {"deleted": True}
+
+
+class SaleOutcome(BaseModel):
+    sale_price: float = Field(gt=0, le=1_000_000_000)
+    sale_date: date
+
+
+@router.put("/properties/{property_id}/sale")
+def record_sale(property_id: int, payload: SaleOutcome, client=Depends(user_client)):
+    """Store the actual sale price next to the estimate SmartBuy gives now (before calibration)."""
+    valuation = _valuation(property_id, client)
+    if valuation.get("status") != "ok":
+        raise HTTPException(status_code=409, detail="Serve una stima valida prima di registrare la vendita")
+    estimate = valuation["range"]["uncalibrated"]
+    zone = valuation.get("zone") or {}
+    row = {"property_id": property_id, "property_type": valuation["property_type"], "comune": zone.get("comune"),
+           "zona": zone.get("zona"), "sale_price": payload.sale_price, "sale_date": payload.sale_date.isoformat(),
+           "estimate_low": estimate["low"], "estimate_mid": estimate["mid"], "estimate_high": estimate["high"]}
+    try:
+        response = client.table("valuation_outcomes").upsert(row, on_conflict="property_id").execute()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Unable to save the sale") from exc
+    return response.data[0] if response.data else row
+
+
+@router.delete("/properties/{property_id}/sale")
+def delete_sale(property_id: int, client=Depends(user_client)):
+    get_property(property_id, client)
+    try:
+        client.table("valuation_outcomes").delete().eq("property_id", property_id).execute()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Unable to delete the sale") from exc
+    return {"deleted": True}
 
 
 @router.get("/properties")

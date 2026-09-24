@@ -1,4 +1,4 @@
-from document_engine.valuation import build_valuation
+from document_engine.valuation import build_valuation, calibration_from_outcomes
 
 # Real OMI 2025/2 quotations of Bologna zone C4 (Via Zamboni).
 ZONE = {"zona": "C4", "fascia": "C", "descrizione": None, "semestre": "2025/2", "quotes": [
@@ -118,3 +118,46 @@ def test_confidence_lists_missing_inputs():
     result = build_valuation(property_record={"surface_m2": 75}, zone=ZONE)
     assert result["confidence"]["level"] == "bassa"
     assert "categoria catastale da visura" in result["confidence"]["missing"]
+
+
+NORTH_EAST_ZONE = {**ZONE, "area_territoriale": "NORD-EST"}
+BASE = {"property_type": "residenziale", "surface_m2": 100, "condition": "Buono"}
+
+
+def test_listings_are_discounted_by_the_macro_area_negotiation_discount():
+    comps = [{"kind": "annuncio", "price": 400000, "surface_m2": 100}] * 3
+    result = build_valuation(property_record=BASE, zone=NORTH_EAST_ZONE, comparables=comps)
+    method = result["methods"][-1]
+    assert method["mid"] == 380000  # 4.000 €/m² less 5% (North-East)
+    assert "5%" in method["explanation"]
+    # OMI mid 285.000 blended with 30% weight for three comparables
+    assert result["range"]["mid"] == round((0.7 * 285000 + 0.3 * 380000) / 1000) * 1000
+
+
+def test_sold_comparables_are_not_discounted_and_unknown_area_uses_national_discount():
+    comps = [{"kind": "venduto", "price": 300000, "surface_m2": 100}, {"kind": "annuncio", "price": 300000, "surface_m2": 100},
+             {"kind": "venduto", "price": 300000, "surface_m2": 100}]
+    method = build_valuation(property_record=BASE, zone=ZONE, comparables=comps)["methods"][-1]
+    assert method["low"] == 279000 and method["high"] == 300000  # listing less 7%
+
+
+def test_fewer_than_three_comparables_are_not_used():
+    result = build_valuation(property_record=BASE, zone=ZONE, comparables=[{"kind": "venduto", "price": 1, "surface_m2": 1}])
+    assert len(result["methods"]) == 1
+    assert any("almeno 3" in c for c in result["caveats"])
+
+
+def test_calibration_needs_five_sales_and_uses_the_median_ratio():
+    outcomes = [{"sale_price": 90, "estimate_mid": 100, "comune": "Bologna"}] * 4
+    few = calibration_from_outcomes(outcomes, "BOLOGNA")
+    assert few == {"n": 4, "scope": "tutte le vendite", "applied": False, "factor": 0.9, "mean_abs_error": 0.1}
+    many = calibration_from_outcomes(outcomes + [{"sale_price": 95, "estimate_mid": 100, "comune": "Bologna"}], "Bologna")
+    assert many["applied"] and many["scope"] == "comune" and many["factor"] == 0.9
+
+
+def test_applied_calibration_scales_the_range_and_keeps_the_uncalibrated_estimate():
+    calibration = {"n": 6, "scope": "comune", "applied": True, "factor": 0.9}
+    result = build_valuation(property_record=BASE, zone=ZONE, calibration=calibration)
+    assert result["range"]["uncalibrated"]["mid"] == 285000
+    assert result["range"]["mid"] == 256000
+    assert result["adjustments"][-1]["pct"] == -0.1

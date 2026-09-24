@@ -22,6 +22,7 @@ public OMI quotations, not an appraisal.
 
 from __future__ import annotations
 
+from statistics import median, quantiles
 from typing import Any
 
 from document_engine.cross_validation import effective_facts, norm_categoria, norm_comune, norm_energy_class, parse_number
@@ -29,6 +30,14 @@ from document_engine.cross_validation import effective_facts, norm_categoria, no
 # Used only when the municipality/province/Italy yield statistics are unavailable.
 FALLBACK_RETAIL_YIELD = {"p25": 0.055, "p50": 0.063, "p75": 0.076, "scope": "italia", "label": "Italia (valore di riserva)", "n": 0}
 MAX_TOTAL_ADJUSTMENT = 0.20
+
+# Average discount between asking and final price, Banca d'Italia - Tecnoborsa -
+# Agenzia delle Entrate "Sondaggio congiunturale sul mercato delle abitazioni",
+# 2nd quarter 2026. The North-West is not published separately: national value.
+NEGOTIATION_DISCOUNT = {"NORD-EST": 0.05, "NORD-OVEST": 0.07, "CENTRO": 0.09, "SUD": 0.09, "ISOLE": 0.09}
+NEGOTIATION_DISCOUNT_SOURCE = "Sondaggio congiunturale Banca d'Italia – Tecnoborsa – Agenzia Entrate, 2° trimestre 2026"
+MIN_COMPARABLES = 3
+MIN_CALIBRATION_SALES = 5
 
 _STATE_BY_CONDITION = {
     "ottimo": "OTTIMO", "ristrutturato": "OTTIMO", "nuovo": "OTTIMO", "nuova costruzione": "OTTIMO",
@@ -124,12 +133,57 @@ def _confidence(checks: list[tuple[bool, str]]) -> dict[str, Any]:
     return {"level": level, "score": round(score, 2), "missing": missing}
 
 
+def _quantiles(values: list[float]) -> tuple[float, float, float]:
+    ordered = sorted(values)
+    if len(ordered) < 4:
+        return ordered[0], median(ordered), ordered[-1]
+    q1, q2, q3 = quantiles(ordered, n=4)
+    return q1, q2, q3
+
+
+def comparables_method(comparables: list[dict[str, Any]], surface: float, area: str | None) -> dict[str, Any] | None:
+    """Market comparison on listings (net of the negotiation discount) and known sales."""
+    discount = NEGOTIATION_DISCOUNT.get(str(area or "").upper(), 0.07)
+    per_sqm = []
+    for comp in comparables:
+        price, comp_surface = parse_number(comp.get("price")), parse_number(comp.get("surface_m2"))
+        if not price or not comp_surface:
+            continue
+        per_sqm.append(price / comp_surface * (1 - discount if comp.get("kind") == "annuncio" else 1))
+    if len(per_sqm) < MIN_COMPARABLES:
+        return None
+    low, mid, high = _quantiles(per_sqm)
+    listings = sum(1 for c in comparables if c.get("kind") == "annuncio")
+    return {
+        "name": f"Comparabili ({len(per_sqm)}: {listings} annunci, {len(per_sqm) - listings} vendite)",
+        "low": _round(low * surface), "mid": _round(mid * surface), "high": _round(high * surface),
+        "weight": round(min(0.6, 0.1 * len(per_sqm)), 2),
+        "explanation": f"{_euro(low)}–{_euro(high)} €/m² (mediana {_euro(mid)}) × {surface:g} m²; prezzi degli annunci "
+                       f"ridotti del {discount:.0%} di sconto medio di trattativa ({NEGOTIATION_DISCOUNT_SOURCE})",
+    }
+
+
+def calibration_from_outcomes(outcomes: list[dict[str, Any]], comune: str | None) -> dict[str, Any]:
+    """Median ratio sale price / SmartBuy estimate over the recorded sales."""
+    usable = [o for o in outcomes if parse_number(o.get("estimate_mid")) and parse_number(o.get("sale_price"))]
+    local = [o for o in usable if comune and norm_comune(o.get("comune") or "") == norm_comune(comune)]
+    scope, sample = ("comune", local) if len(local) >= MIN_CALIBRATION_SALES else ("tutte le vendite", usable)
+    ratios = [parse_number(o["sale_price"]) / parse_number(o["estimate_mid"]) for o in sample]
+    result: dict[str, Any] = {"n": len(ratios), "scope": scope, "applied": len(ratios) >= MIN_CALIBRATION_SALES}
+    if ratios:
+        result["factor"] = round(median(ratios), 4)
+        result["mean_abs_error"] = round(sum(abs(r - 1) for r in ratios) / len(ratios), 4)
+    return result
+
+
 def build_valuation(
     *,
     property_record: dict[str, Any],
     zone: dict[str, Any] | None,
     facts: list[dict[str, Any]] | None = None,
     yield_stats: dict[str, Any] | None = None,
+    comparables: list[dict[str, Any]] | None = None,
+    calibration: dict[str, Any] | None = None,
     document_problems: int = 0,
 ) -> dict[str, Any]:
     facts = facts or []
@@ -267,6 +321,32 @@ def build_valuation(
             (property_record.get("floor") is not None, "piano"),
         ])
 
+    comps = comparables_method(comparables or [], surface, zone.get("area_territoriale"))
+    if comps:
+        weight = comps.pop("weight")
+        result["methods"].append(comps)
+        # Comparables price the main unit only: garages are added on top as above.
+        extra = {key: sum(a[key] for a in result["additions"]) for key in ("low", "mid", "high")}
+        low = (1 - weight) * low + weight * (comps["low"] + extra["low"])
+        mid = (1 - weight) * mid + weight * (comps["mid"] + extra["mid"])
+        high = (1 - weight) * high + weight * (comps["high"] + extra["high"])
+        result["comparables_weight"] = weight
+    elif comparables:
+        result["caveats"].append(f"Comparabili inseriti: {len(comparables)}. Ne servono almeno {MIN_COMPARABLES} per usarli nella stima.")
+
+    # Pre-calibration estimate: what gets stored with a real sale, so calibration never compounds.
+    uncalibrated = {"low": _round(low), "mid": _round(mid), "high": _round(high)}
+    if calibration and calibration.get("n"):
+        result["calibration"] = calibration
+        if calibration["applied"]:
+            factor = calibration["factor"]
+            low, mid, high = low * factor, mid * factor, high * factor
+            result["adjustments"].append({"label": f"Calibrazione su {calibration['n']} vendite reali ({calibration['scope']})",
+                                          "pct": round(factor - 1, 4)})
+        else:
+            result["caveats"].append(f"Vendite reali registrate: {calibration['n']}. Dalla {MIN_CALIBRATION_SALES}ª la stima "
+                                     "verrà calibrata sull'errore misurato.")
+
     if state != wanted_state:
         result["caveats"].append(f"Nessuna quotazione per lo stato '{_STATE_LABEL.get(wanted_state, wanted_state)}': "
                                  f"usato lo stato '{_STATE_LABEL.get(state, state)}'.")
@@ -280,7 +360,7 @@ def build_valuation(
 
     result["status"] = "ok"
     result["range"] = {"low": _round(low), "mid": _round(mid), "high": _round(high),
-                       "per_sqm_low": round(low / surface), "per_sqm_high": round(high / surface)}
+                       "per_sqm_low": round(low / surface), "per_sqm_high": round(high / surface), "uncalibrated": uncalibrated}
     asking = parse_number(property_record.get("asking_price"))
     if asking:
         position = "below" if asking < low else "above" if asking > high else "within"
