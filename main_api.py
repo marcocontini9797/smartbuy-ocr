@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.agent_routes import router as agent_router
 from api.document_routes import router as document_router
 from api.property_routes import router as property_router
+from api.registry_routes import router as registry_router
 from api.operations_routes import router as operations_router
 from document_engine.feedback_router import router as feedback_router
 
@@ -17,6 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(property_router)
+app.include_router(registry_router)
 app.include_router(operations_router)
 app.include_router(document_router)
 app.include_router(agent_router)
