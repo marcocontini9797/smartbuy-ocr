@@ -5,6 +5,7 @@ parallel persistence models or duplicate tables.
 """
 
 from fastapi import APIRouter, HTTPException, Query, Depends
+import re
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
@@ -15,7 +16,7 @@ from document_engine.cross_validation import strip_accents
 from document_engine.geocoding import geocode, postcode
 from document_engine.hazards import point_hazards
 from document_engine.market import build_market_context
-from document_engine.territory import build_territory, ipab_area, price_update
+from document_engine.territory import build_territory, fiaip_reference, ipab_area, price_update, year_update
 from document_engine.valuation import build_valuation, calibration_from_outcomes
 
 
@@ -75,6 +76,7 @@ class PropertyUpdate(BaseModel):
     condition: Literal["Ristrutturato", "Buono", "Da ristrutturare"] | None = None
     energy_class: str | None = Field(default=None, max_length=3)
     asking_price: float | None = Field(default=None, ge=0)
+    fiaip_zone: str | None = Field(default=None, max_length=10, pattern=r"^$|^\d{1,2}[ab]?(/\d{1,2}[ab]?)?$")
 
 
 @router.patch("/properties/{property_id}")
@@ -83,6 +85,8 @@ def update_property(property_id: int, payload: PropertyUpdate, client=Depends(us
     changes = payload.model_dump(exclude_unset=True)
     if not changes:
         raise HTTPException(status_code=400, detail="Nothing to update")
+    if changes.get("fiaip_zone") == "":
+        changes["fiaip_zone"] = None  # "non indicata" in the picker
     try:
         response = client.table("properties").update(changes).eq("id", property_id).execute()
     except Exception as exc:
@@ -160,7 +164,8 @@ def _valuation(property_id: int, client) -> dict:
     except Exception:
         outcomes = []
     sale = next(iter(_optional_rows(client, "valuation_outcomes", property_id)), None)
-    update = None
+    update = reference = None
+    zones_list: list[dict] = []
     if zone and kind == "residenziale":  # IPAB is a house price index: not used for shops
         area = ipab_area(zone.get("area_territoriale"), next((q.get("comune") for q in zone.get("quotes") or []), None))
         try:
@@ -168,11 +173,34 @@ def _valuation(property_id: int, client) -> dict:
         except Exception:
             index_rows = []
         update = price_update(index_rows, zone.get("semestre"), area)
+        zones_list, reference = _fiaip(client, zone, property_record, index_rows, area)
     valuation = build_valuation(property_record=property_record, zone=zone, facts=facts, yield_stats=yield_stats,
                                 comparables=comparables, calibration=calibration_from_outcomes(outcomes, property_record.get("city")),
-                                price_update=update)
+                                price_update=update, reference=reference)
     return {"property_id": property_id, "comparables": sorted(comparables, key=lambda c: c.get("created_at") or ""),
-            "sale": sale, **valuation, "market": _market(client, zone, kind, (valuation.get("surface") or {}).get("value"))}
+            "sale": sale, **valuation, "fiaip_zones": zones_list, "fiaip_zone": property_record.get("fiaip_zone"),
+            "market": _market(client, zone, kind, (valuation.get("surface") or {}).get("value"))}
+
+
+def _fiaip(client, zone: dict, property_record: dict, index_rows: list[dict], area: str) -> tuple[list[dict], dict | None]:
+    """FIAIP zones of the property's municipality (for the picker) and the chosen zone's values."""
+    try:
+        rows = (client.table("reference_prices").select("year,zone_code,zone_name,item,min_value,max_value")
+                .eq("source", "FIAIP").eq("comune_cat", zone.get("comune_cat")).execute().data or [])
+    except Exception:
+        return [], None
+    if not rows:
+        return [], None
+    year = max(r["year"] for r in rows)
+    rows = [r for r in rows if r["year"] == year]
+    zones = {r["zone_code"]: r["zone_name"] for r in rows}
+    order = lambda code: (int(re.match(r"\d+", code).group()), code)  # noqa: E731
+    zones_list = [{"code": code, "name": zones[code].title()} for code in sorted(zones, key=order)]
+    chosen = property_record.get("fiaip_zone")
+    if not chosen or chosen not in zones:
+        return zones_list, None
+    return zones_list, fiaip_reference([r for r in rows if r["zone_code"] == chosen], property_record.get("condition"),
+                                       year_update(index_rows, year, area))
 
 
 def _market(client, zone: dict | None, kind: str, surface: float | None) -> dict | None:

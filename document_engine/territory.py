@@ -110,20 +110,52 @@ def ipab_area(area_territoriale: str | None, comune: str | None) -> str:
     return IPAB_CITY.get(str(comune or "").upper()) or IPAB_AREA.get(str(area_territoriale or "").upper(), "IT")
 
 
+def _index_change(rows: list[dict[str, Any]], quarters: list[str], area: str, label: str) -> dict[str, Any] | None:
+    """Istat index of the latest quarter over the mean of the given quarters."""
+    by_period = {r["period"]: r for r in rows if r.get("ref_area") == area and r.get("purchase") == "ALL" and r.get("index_2025")}
+    base = [by_period[q]["index_2025"] for q in quarters if q in by_period]
+    if len(base) != len(quarters) or not by_period:
+        return None
+    latest_period = max(by_period, key=lambda p: (int(p[:4]), int(p[-1])))
+    if latest_period <= quarters[-1]:
+        return None
+    latest = by_period[latest_period]
+    factor = latest["index_2025"] / (sum(base) / len(base))
+    return {"factor": round(factor, 4), "from": label, "to": latest_period.replace("-Q", " T"),
+            "area": IPAB_LABEL.get(area, area), "provisional": bool(latest.get("provisional")), "source": IPAB_SOURCE}
+
+
 def price_update(rows: list[dict[str, Any]], semestre: str | None, area: str) -> dict[str, Any] | None:
     """Change of the Istat house price index from the OMI semester to the latest quarter."""
     if not semestre or "/" not in semestre:
         return None
     year, half = semestre.split("/")
     quarters = [f"{year}-Q{q}" for q in ((1, 2) if half == "1" else (3, 4))]
-    by_period = {r["period"]: r for r in rows if r.get("ref_area") == area and r.get("purchase") == "ALL" and r.get("index_2025")}
-    base = [by_period[q]["index_2025"] for q in quarters if q in by_period]
-    if len(base) != 2 or not by_period:
+    return _index_change(rows, quarters, area, f"semestre OMI {semestre}")
+
+
+def year_update(rows: list[dict[str, Any]], year: int, area: str) -> dict[str, Any] | None:
+    """Change of the Istat house price index from the average of a year to the latest quarter."""
+    return _index_change(rows, [f"{year}-Q{q}" for q in (1, 2, 3, 4)], area, f"media {year}")
+
+
+# FIAIP states for the property's condition (the agent's "Ristrutturato" is taken as internal renovation).
+FIAIP_STATE = {"ristrutturato": ("abitazioni_ristrutturato", "ristrutturati internamente"),
+               "buono": ("abitazioni_buono", "buono stato"),
+               "da ristrutturare": ("abitazioni_da_ristrutturare", "da ristrutturare")}
+
+
+def fiaip_reference(rows: list[dict[str, Any]], condition: str | None, update: dict[str, Any] | None) -> dict[str, Any] | None:
+    """FIAIP zone values for the property's condition, brought to the latest Istat quarter."""
+    item, label = FIAIP_STATE.get(str(condition or "buono").strip().casefold(), FIAIP_STATE["buono"])
+    row = next((r for r in rows if r.get("item") == item and r.get("min_value") and r.get("max_value")), None)
+    if not row:
         return None
-    latest_period = max(by_period, key=lambda p: (int(p[:4]), int(p[-1])))
-    if latest_period <= quarters[-1]:
-        return None
-    latest = by_period[latest_period]
-    factor = latest["index_2025"] / (sum(base) / 2)
-    return {"factor": round(factor, 4), "from": f"semestre OMI {semestre}", "to": latest_period.replace("-Q", " T"),
-            "area": IPAB_LABEL.get(area, area), "provisional": bool(latest.get("provisional")), "source": IPAB_SOURCE}
+    factor = (update or {}).get("factor", 1)
+    explanation = (f"Listino FIAIP {row['year']}, zona {row['zone_code']} {row['zone_name'].title()}: "
+                   f"{float(row['min_value']):,.0f}–{float(row['max_value']):,.0f} €/m² ({label})".replace(",", "."))
+    if update:
+        explanation += f", aggiornato con l'indice Istat {update['area']} ({update['from']} → {update['to']}, {factor - 1:+.1%})"
+    return {"name": f"Comparativo (listino agenti FIAIP, zona {row['zone_code']})", "low_sqm": float(row["min_value"]),
+            "high_sqm": float(row["max_value"]), "factor": factor, "explanation": explanation, "zone_code": row["zone_code"],
+            "zone_name": row["zone_name"], "year": row["year"]}

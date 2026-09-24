@@ -1,5 +1,5 @@
 from document_engine.hazards import flood_level, landslide_level
-from document_engine.territory import build_territory, ipab_area, price_update
+from document_engine.territory import build_territory, fiaip_reference, ipab_area, price_update
 from document_engine.valuation import build_valuation
 from test_valuation import ZONE
 
@@ -71,3 +71,25 @@ def test_residential_valuation_is_brought_to_the_latest_quarter():
                               zone=ZONE, price_update=update)
     assert updated["range"]["mid"] == round(base["range"]["mid"] * update["factor"] / 1000) * 1000
     assert updated["adjustments"][-1]["label"].startswith("Aggiornamento prezzi Istat Nord-Est")
+
+
+FIAIP_ZONE_4 = [{"year": 2024, "zone_code": "4", "zone_name": "GALVANI", "item": "abitazioni_buono", "min_value": 2900, "max_value": 3500},
+                {"year": 2024, "zone_code": "4", "zone_name": "GALVANI", "item": "abitazioni_ristrutturato", "min_value": 3500, "max_value": 4000}]
+
+
+def test_fiaip_reference_uses_the_condition_and_the_istat_update():
+    update = {"factor": 1.05, "area": "Nord-Est", "from": "media 2024", "to": "2026 T2"}
+    ref = fiaip_reference(FIAIP_ZONE_4, "Ristrutturato", update)
+    assert (ref["low_sqm"], ref["high_sqm"], ref["factor"]) == (3500, 4000, 1.05)
+    assert "zona 4 Galvani" in ref["explanation"] and "+5.0%" in ref["explanation"]
+    assert fiaip_reference(FIAIP_ZONE_4, None, None)["low_sqm"] == 2900  # condition not given: buono stato
+    assert fiaip_reference(FIAIP_ZONE_4, "Da ristrutturare", None) is None  # N.D. in the list
+
+
+def test_fiaip_reference_weighs_half_of_the_residential_value():
+    record = {"property_type": "residenziale", "surface_m2": 100, "condition": "Buono"}
+    ref = fiaip_reference(FIAIP_ZONE_4, "Buono", None)
+    result = build_valuation(property_record=record, zone=ZONE, reference=ref)
+    # OMI 2.700–3.000 and FIAIP 2.900–3.500 €/m², 50% each
+    assert result["range"]["low"] == 280000 and result["range"]["high"] == 325000
+    assert result["methods"][1]["name"].startswith("Comparativo (listino agenti FIAIP") and result["reference_weight"] == 0.5

@@ -185,6 +185,7 @@ def build_valuation(
     comparables: list[dict[str, Any]] | None = None,
     calibration: dict[str, Any] | None = None,
     price_update: dict[str, Any] | None = None,
+    reference: dict[str, Any] | None = None,
     document_problems: int = 0,
 ) -> dict[str, Any]:
     facts = facts or []
@@ -287,11 +288,29 @@ def build_valuation(
                            f"(stato {_STATE_LABEL.get(state, state)}"
                            + (f", tipologia scelta dalla categoria catastale {category})" if category else ")"),
         })
+        # OMI quotes describe their semester: bring them to the latest Istat house price quarter.
+        update_note = None
+        if price_update and price_update.get("factor"):
+            base = tuple(value * price_update["factor"] for value in base)
+            result["price_update"] = price_update
+            update_note = {"label": f"Aggiornamento prezzi Istat {price_update['area']} ({price_update['from']} → "
+                                    f"{price_update['to']}{', provvisorio' if price_update.get('provisional') else ''})",
+                           "pct": round(price_update["factor"] - 1, 4)}
+        # A zone price list (FIAIP) is a second comparison: same weight as OMI.
+        if reference:
+            ref = tuple(value * surface * reference.get("factor", 1)
+                        for value in (reference["low_sqm"], (reference["low_sqm"] + reference["high_sqm"]) / 2, reference["high_sqm"]))
+            result["methods"].append({"name": reference["name"], "low": _round(ref[0]), "mid": _round(ref[1]), "high": _round(ref[2]),
+                                      "explanation": reference["explanation"]})
+            base = tuple((a + b) / 2 for a, b in zip(base, ref))
+            result["reference_weight"] = 0.5
         result["adjustments"] = _residential_adjustments(property_record, energy_class)
         total = max(-MAX_TOTAL_ADJUSTMENT, min(MAX_TOTAL_ADJUSTMENT, sum(a["pct"] for a in result["adjustments"])))
         low, mid, high = (value * (1 + total) for value in base)
         if result["adjustments"]:
             result["caveats"].append("I correttivi (piano, ascensore, classe energetica) sono percentuali indicative di prassi estimativa.")
+        if update_note:
+            result["adjustments"].append(update_note)
 
         box_quote, _ = _quote(quotes, "13", "NORMALE")
         for unit in units:
@@ -307,15 +326,6 @@ def build_valuation(
                 low, mid, high = low + add[0], mid + add[1], high + add[2]
             else:
                 result["caveats"].append("Nei documenti c'è un box o posto auto (C/6) non valutato: manca la superficie o la quotazione OMI.")
-
-        # OMI quotes describe their semester: bring them to the latest Istat house price quarter.
-        if price_update and price_update.get("factor"):
-            factor = price_update["factor"]
-            low, mid, high = low * factor, mid * factor, high * factor
-            result["price_update"] = price_update
-            result["adjustments"].append({"label": f"Aggiornamento prezzi Istat {price_update['area']} ({price_update['from']} → "
-                                                   f"{price_update['to']}{', provvisorio' if price_update.get('provisional') else ''})",
-                                          "pct": round(factor - 1, 4)})
 
         if quote.get("loc_min") and quote.get("loc_max"):
             rent_month = (quote["loc_min"] * surface, _mid(quote, "loc_min", "loc_max") * surface, quote["loc_max"] * surface)

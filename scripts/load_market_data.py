@@ -8,6 +8,7 @@
   (the hazard at the exact address is queried live, see document_engine/hazards.py).
 - MEF: IRPEF incomes per municipality (2019, 2024) and per postcode (2024).
 - Istat: house price index (IPAB), quarterly, by macro-area and large cities.
+- FIAIP Bologna: zone price lists, from reference/fiaip_*.json (see parse_fiaip_pdf.py).
 
 Usage: python scripts/load_market_data.py   (re-run when AdE publishes new data)
 """
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import re
 import sys
 import zipfile
@@ -199,6 +201,23 @@ def load_house_price_index() -> int:
     return upsert("house_price_index", list(rows.values()))
 
 
+REFERENCE_DIR = Path(__file__).resolve().parents[1] / "reference"
+# FIAIP files: reference/fiaip_<comune>_<year>.json, made by scripts/parse_fiaip_pdf.py.
+FIAIP_COMUNI = {"bologna": "A944"}
+
+
+def load_reference_prices() -> int:
+    rows = []
+    for path in sorted(REFERENCE_DIR.glob("fiaip_*_*.json")):
+        _, comune, year = path.stem.split("_")
+        for zone in json.loads(path.read_text(encoding="utf-8")):
+            for item, value in zone["values"].items():
+                rows.append({"source": "FIAIP", "year": int(year), "comune_cat": FIAIP_COMUNI[comune], "zone_code": zone["code"],
+                             "zone_name": zone["name"], "item": item, "min_value": value.get("min"),
+                             "max_value": value.get("max"), "unit": value["unit"]})
+    return upsert("reference_prices", rows)
+
+
 if __name__ == "__main__":
     print(f"Comuni Istat caricati: {load_comuni()}")
     print(f"Serie di volumi caricate: {load_volumes()}")
@@ -206,3 +225,4 @@ if __name__ == "__main__":
     print(f"Pericolosità ISPRA per comune: {load_municipal_hazard()} comuni")
     print(f"Redditi IRPEF: {load_irpef()} righe")
     print(f"Indice prezzi abitazioni Istat: {load_house_price_index()} righe")
+    print(f"Listini di zona (FIAIP): {load_reference_prices()} valori")

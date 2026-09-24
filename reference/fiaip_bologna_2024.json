@@ -1,0 +1,5394 @@
+[
+ {
+  "page": 3,
+  "code": "1",
+  "name": "CENTRO STORICO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 4000,
+    "max": 5000
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3300,
+    "max": 4000
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2600,
+    "max": 3200
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2500
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 3100,
+    "max": 3800
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2700
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 4000,
+    "max": 8000
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 3000
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 55000,
+    "max": 70000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 80000,
+    "max": 110000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 120000,
+    "max": 190000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 30000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 40000,
+    "max": 60000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 800
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 850,
+    "max": 1300
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1400,
+    "max": 2000
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 140
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 280,
+    "max": 500
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 110,
+    "max": 160
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 180,
+    "max": 220
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 230,
+    "max": 290
+   }
+  }
+ },
+ {
+  "page": 5,
+  "code": "2",
+  "name": "IRNERIO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3600,
+    "max": 4300
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3500
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2700
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2200
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 3000
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2500
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3800
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 2000
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 35000,
+    "max": 45000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 50000,
+    "max": 65000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 70000,
+    "max": 95000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 18000,
+    "max": 25000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 35000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 800
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 850,
+    "max": 1100
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1100,
+    "max": 1600
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 130
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 180,
+    "max": 250
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 120
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 120,
+    "max": 150
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 150,
+    "max": 180
+   }
+  }
+ },
+ {
+  "page": 7,
+  "code": "3",
+  "name": "SAN VITALE GALVANI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3700,
+    "max": 4500
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3100,
+    "max": 3600
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 2800
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2300
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2700,
+    "max": 3500
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2500
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 3000,
+    "max": 3800
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2300
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 40000,
+    "max": 50000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 50000,
+    "max": 70000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 80000,
+    "max": 130000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 35000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 40000,
+    "max": 60000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 800
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 850,
+    "max": 1300
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1400,
+    "max": 1900
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 130
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 180,
+    "max": 250
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 130
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 120,
+    "max": 150
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 150,
+    "max": 200
+   }
+  }
+ },
+ {
+  "page": 9,
+  "code": "4",
+  "name": "GALVANI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 4200,
+    "max": 5000
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3500,
+    "max": 4000
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3500
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2700
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 3100,
+    "max": 4000
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 3000
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 3600,
+    "max": 4800
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2900
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 50000,
+    "max": 70000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 75000,
+    "max": 120000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 130000,
+    "max": 200000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 30000,
+    "max": 40000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 40000,
+    "max": 60000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 900
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 900,
+    "max": 1400
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1400,
+    "max": 2200
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 120,
+    "max": 150
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 230,
+    "max": 350
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 110,
+    "max": 140
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 140,
+    "max": 180
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 180,
+    "max": 250
+   }
+  }
+ },
+ {
+  "page": 11,
+  "code": "5",
+  "name": "MALPIGHI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3800,
+    "max": 4600
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3300,
+    "max": 3800
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2700,
+    "max": 3200
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2600
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3500
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2700
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3400
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2400
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 40000,
+    "max": 50000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 50000,
+    "max": 70000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 80000,
+    "max": 120000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 35000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 40000,
+    "max": 60000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 800
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 850,
+    "max": 1200
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1300,
+    "max": 2000
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 130,
+    "max": 140
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 170,
+    "max": 220
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 120
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 110,
+    "max": 140
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 150,
+    "max": 190
+   }
+  }
+ },
+ {
+  "page": 13,
+  "code": "6",
+  "name": "MARCONI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3700,
+    "max": 4400
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3300,
+    "max": 3700
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2700,
+    "max": 3200
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2600
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2600,
+    "max": 3000
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2400
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3300
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2200
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 35000,
+    "max": 45000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 50000,
+    "max": 70000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 80000,
+    "max": 110000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 30000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 30000,
+    "max": 40000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 800
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 1200
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1250,
+    "max": 1800
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 120
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 140,
+    "max": 220
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 120,
+    "max": 150
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 150,
+    "max": 180
+   }
+  }
+ },
+ {
+  "page": 15,
+  "code": "7a/7b",
+  "name": "MARCONI IRNERIO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3400,
+    "max": 4000
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3300
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 2700
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2200
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 2800
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2000
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 3000
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1700
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 35000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 38000,
+    "max": 50000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 18000,
+    "max": 22000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 750
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 750,
+    "max": 1100
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1100,
+    "max": 1500
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 150,
+    "max": 180
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 100,
+    "max": 120
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 120,
+    "max": 150
+   }
+  }
+ },
+ {
+  "page": 17,
+  "code": "8",
+  "name": "MALPIGHI PRATELLO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3400,
+    "max": 4000
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3000,
+    "max": 3300
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 2800
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2200
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2700
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 1900
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2900
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1400,
+    "max": 1800
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 38000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 38000,
+    "max": 50000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 25000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 750
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 750,
+    "max": 1100
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1100,
+    "max": 1600
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 110,
+    "max": 150
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 130
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 120,
+    "max": 150
+   }
+  }
+ },
+ {
+  "page": 19,
+  "code": "9",
+  "name": "SAFFI ZANARDI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3500
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2600,
+    "max": 2900
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2500
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2000
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2500
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1400,
+    "max": 1700
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2500
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1200,
+    "max": 1400
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 22000,
+    "max": 27000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 27000,
+    "max": 33000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 35000,
+    "max": 45000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 12000,
+    "max": 15000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 16000,
+    "max": 19000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 750
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 750,
+    "max": 900
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 900,
+    "max": 1300
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 130
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 110
+   }
+  }
+ },
+ {
+  "page": 21,
+  "code": "10",
+  "name": "BOLOGNINA PIAZZA DELL’UNITÀ",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3200,
+    "max": 3700
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2600,
+    "max": 3000
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2500
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2100
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2500
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2100
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 2800
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1300,
+    "max": 1800
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 16000,
+    "max": 20000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 22000,
+    "max": 28000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 30000,
+    "max": 40000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 8000,
+    "max": 10000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 10000,
+    "max": 15000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 700
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 1000
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1000,
+    "max": 1200
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 85
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 130,
+    "max": 170
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 120
+   }
+  }
+ },
+ {
+  "page": 23,
+  "code": "11",
+  "name": "MASSARENTI CIRENAICA SAN DONATO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3300,
+    "max": 3900
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2700,
+    "max": 3300
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2600
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1900,
+    "max": 2100
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 3000
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2100
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2600
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1300,
+    "max": 1750
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 20000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 28000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 30000,
+    "max": 40000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 10000,
+    "max": 13000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 13000,
+    "max": 18000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 750
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 750,
+    "max": 950
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 900,
+    "max": 1300
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 140
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 110,
+    "max": 140
+   }
+  }
+ },
+ {
+  "page": 25,
+  "code": "12",
+  "name": "SAN VITALE MAZZINI SANT’ORSOLA",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3700,
+    "max": 4200
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3000,
+    "max": 3600
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 2800
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2200
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 3000
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2200
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3500
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2200
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 28000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 28000,
+    "max": 35000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 40000,
+    "max": 50000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 10000,
+    "max": 15000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 20000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 750
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 1000
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1000,
+    "max": 1300
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 130
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 90
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 130,
+    "max": 180
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 110,
+    "max": 140
+   }
+  }
+ },
+ {
+  "page": 27,
+  "code": "13",
+  "name": "MURRI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 4000,
+    "max": 4700
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3500,
+    "max": 4000
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3300
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2600
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3400
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2500
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 3000
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2200
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 35000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 35000,
+    "max": 45000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 48000,
+    "max": 65000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 14000,
+    "max": 18000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 750
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 1100
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1100,
+    "max": 1500
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 130
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 130,
+    "max": 180
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 100,
+    "max": 120
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 130,
+    "max": 160
+   }
+  }
+ },
+ {
+  "page": 29,
+  "code": "14",
+  "name": "MURRI GIARDINI MARGHERITA",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 4200,
+    "max": 5000
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3600,
+    "max": 4100
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3400
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2800
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3400
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 2100,
+    "max": 2500
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 2800
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 2000
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 35000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 35000,
+    "max": 48000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 48000,
+    "max": 70000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 20000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 23000,
+    "max": 30000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 800
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 850,
+    "max": 1200
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1200,
+    "max": 1700
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 100
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 120,
+    "max": 160
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 100
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 100,
+    "max": 120
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 140,
+    "max": 180
+   }
+  }
+ },
+ {
+  "page": 31,
+  "code": "15",
+  "name": "SAN MAMOLO COLLI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3900,
+    "max": 4900
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3300,
+    "max": 3800
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2700,
+    "max": 3200
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2600
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3400
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2400
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 2700
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 2000
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 30000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 35000,
+    "max": 45000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 50000,
+    "max": 60000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 12000,
+    "max": 18000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 25000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 750
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 1100
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1100,
+    "max": 1400
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 120
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 110,
+    "max": 150
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 90
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 120
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 130,
+    "max": 150
+   }
+  }
+ },
+ {
+  "page": 33,
+  "code": "16",
+  "name": "SARAGOZZA COLLI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 4000,
+    "max": 5000
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3500,
+    "max": 3900
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3300
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2700
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2700,
+    "max": 3200
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2500
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 3000
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 2000
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 30000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 35000,
+    "max": 45000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 50000,
+    "max": 60000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 14000,
+    "max": 18000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 25000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 750
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 1100
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1100,
+    "max": 1600
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 140
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 140,
+    "max": 180
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 100,
+    "max": 120
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 130,
+    "max": 150
+   }
+  }
+ },
+ {
+  "page": 35,
+  "code": "17a",
+  "name": "COSTA SARAGOZZA",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3500,
+    "max": 4000
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3300,
+    "max": 3500
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2700,
+    "max": 3200
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2700
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 3000
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2200
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2750
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 1700
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 30000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 32000,
+    "max": 42000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 48000,
+    "max": 60000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 14000,
+    "max": 18000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 25000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 700
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 1000
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1000,
+    "max": 1500
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 120,
+    "max": 150
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 90
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 120
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 120,
+    "max": 150
+   }
+  }
+ },
+ {
+  "page": 37,
+  "code": "17b",
+  "name": "COSTA SAFFI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3300,
+    "max": 3700
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3300
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 2700
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1900,
+    "max": 2300
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2900
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1900,
+    "max": 2200
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 2900
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1800
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 30000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 32000,
+    "max": 42000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 42000,
+    "max": 52000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 14000,
+    "max": 18000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 23000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 700
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 750,
+    "max": 1000
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1000,
+    "max": 1500
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 105,
+    "max": 140
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 120,
+    "max": 160
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 100,
+    "max": 130
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 130,
+    "max": 160
+   }
+  }
+ },
+ {
+  "page": 39,
+  "code": "18",
+  "name": "SAFFI SANTA VIOLA",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3200,
+    "max": 3600
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3100
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 2700
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1900,
+    "max": 2200
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2600
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2000
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2600
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1300,
+    "max": 1500
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 25000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 35000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 10000,
+    "max": 14000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 700
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 750,
+    "max": 950
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 950,
+    "max": 1200
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 130
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 110,
+    "max": 130
+   }
+  }
+ },
+ {
+  "page": 41,
+  "code": "19",
+  "name": "PORTO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3200
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 2700
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2300
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 1900
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2600
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1800
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 18000,
+    "max": 22000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 23000,
+    "max": 27000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 520,
+    "max": 600
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 750
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 900
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 110,
+    "max": 120
+   }
+  }
+ },
+ {
+  "page": 43,
+  "code": "20",
+  "name": "LAME ZANARDI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3200,
+    "max": 3700
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2600,
+    "max": 3000
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2500
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2000
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2800
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1800
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2800
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1400,
+    "max": 1700
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 18000,
+    "max": 22000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 24000,
+    "max": 30000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 8000,
+    "max": 10000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 700
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 750,
+    "max": 950
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 950,
+    "max": 1150
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 120
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 140
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 90
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 110
+   }
+  }
+ },
+ {
+  "page": 45,
+  "code": "21",
+  "name": "SAN DONATO FIERA",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3200,
+    "max": 3700
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3200
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2700
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2100
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 3200
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 2100,
+    "max": 2400
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2500
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1300,
+    "max": 1600
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 22000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 27000,
+    "max": 30000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 10000,
+    "max": 12000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 12000,
+    "max": 15000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 650
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 1000
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1000,
+    "max": 1200
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 120
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 90
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 110,
+    "max": 140
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 110
+   }
+  }
+ },
+ {
+  "page": 47,
+  "code": "22",
+  "name": "SAN DONATO PILASTRO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 2700,
+    "max": 3000
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2500
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2200
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 1900
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2900
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1900,
+    "max": 2050
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2500
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1350,
+    "max": 1850
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 18000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 18000,
+    "max": 24000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 5000,
+    "max": 8000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 9000,
+    "max": 12000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 500,
+    "max": 600
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 650,
+    "max": 750
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 950
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 120
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 60,
+    "max": 80
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   }
+  }
+ },
+ {
+  "page": 49,
+  "code": "23",
+  "name": "ROVERI MATTEI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 2700,
+    "max": 3100
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2600
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2200
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 1900
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2500
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1800
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2100
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1300,
+    "max": 1500
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 14000,
+    "max": 18000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 18000,
+    "max": 24000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 500,
+    "max": 600
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 650,
+    "max": 750
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 950
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 65,
+    "max": 75
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 120
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   }
+  }
+ },
+ {
+  "page": 51,
+  "code": "24",
+  "name": "SAN VITALE MASSARENTI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3000,
+    "max": 3400
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2600,
+    "max": 2900
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2500
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 1900
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 1900
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 1900,
+    "max": 2300
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1300,
+    "max": 1700
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 20000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 28000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 6000,
+    "max": 9000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 500,
+    "max": 650
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 900
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 900,
+    "max": 1100
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 95,
+    "max": 130
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 100
+   }
+  }
+ },
+ {
+  "page": 53,
+  "code": "25",
+  "name": "MAZZINI FOSSOLO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3400,
+    "max": 3700
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3200
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2600
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2000
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2000
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2400
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1300,
+    "max": 1800
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 18000,
+    "max": 23000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 24000,
+    "max": 28000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 8000,
+    "max": 10000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 650
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 900
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 900,
+    "max": 1100
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 120
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 100
+   }
+  }
+ },
+ {
+  "page": 55,
+  "code": "26",
+  "name": "MAZZINI MURRI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3700,
+    "max": 4100
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3100,
+    "max": 3600
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2600,
+    "max": 3000
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2400
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2600,
+    "max": 3200
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2400
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 3000
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 2100
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 26000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 28000,
+    "max": 32000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 32000,
+    "max": 45000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 10000,
+    "max": 14000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 18000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 750
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 750,
+    "max": 900
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 900,
+    "max": 1200
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 130
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 140,
+    "max": 190
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 110
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 120,
+    "max": 140
+   }
+  }
+ },
+ {
+  "page": 57,
+  "code": "27",
+  "name": "COLLI - TOSCANA SAN RUFFILLO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3700,
+    "max": 4200
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3000,
+    "max": 3500
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 2900
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2200
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 2800
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 2100
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 25000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 26000,
+    "max": 32000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 8000,
+    "max": 10000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 10000,
+    "max": 12000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 650
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 900
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 900,
+    "max": 1100
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 100
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 85
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 110,
+    "max": 130
+   }
+  }
+ },
+ {
+  "page": 59,
+  "code": "28",
+  "name": "COLLI BARBIANO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 4000,
+    "max": 4500
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3400,
+    "max": 3800
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 3000
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2200
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 28000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 30000,
+    "max": 35000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 700
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 900
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 900,
+    "max": 1300
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 90
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 100
+   }
+  }
+ },
+ {
+  "page": 61,
+  "code": "29",
+  "name": "COLLI VILLA GHIGI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 4000,
+    "max": 4700
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3400,
+    "max": 3800
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 3000
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2200
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 30000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 32000,
+    "max": 38000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 700
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 750,
+    "max": 950
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 950,
+    "max": 1400
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 90
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 100
+   }
+  }
+ },
+ {
+  "page": 63,
+  "code": "30",
+  "name": "COLLI RAVONE",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3800,
+    "max": 4500
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3000,
+    "max": 3500
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 3000
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2200
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 22000,
+    "max": 28000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 28000,
+    "max": 32000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 35000,
+    "max": 48000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 10000,
+    "max": 12000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 18000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 700
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 850
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 900,
+    "max": 1250
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 90
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 100
+   }
+  }
+ },
+ {
+  "page": 65,
+  "code": "31",
+  "name": "COLLI SAN LUCA",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 4000,
+    "max": 4800
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 3400,
+    "max": 3900
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2700,
+    "max": 3100
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2100,
+    "max": 2300
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3200
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1900,
+    "max": 2400
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 28000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 30000,
+    "max": 35000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 10000,
+    "max": 12000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 700
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 750,
+    "max": 1000
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 1000,
+    "max": 1400
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 100,
+    "max": 120
+   }
+  }
+ },
+ {
+  "page": 67,
+  "code": "32",
+  "name": "COSTA GHISELLO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3300,
+    "max": 3900
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3200
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2800
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2200
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2800
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2000
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2700
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1900
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 28000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 28000,
+    "max": 32000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 35000,
+    "max": 40000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 10000,
+    "max": 15000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 18000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 650
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 900
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 900,
+    "max": 1200
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 130
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 100
+   }
+  }
+ },
+ {
+  "page": 69,
+  "code": "33",
+  "name": "BARCA BATTINDARNO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3000,
+    "max": 3600
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2700,
+    "max": 3000
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2500
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 1900
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2800
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2000
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2500
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1400,
+    "max": 1500
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 22000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 28000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 30000,
+    "max": 32000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 8000,
+    "max": 10000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 12000,
+    "max": 15000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 650
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 800
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 850,
+    "max": 1000
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 65,
+    "max": 75
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 130
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 100
+   }
+  }
+ },
+ {
+  "page": 71,
+  "code": "34",
+  "name": "BARCA",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3200
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2600
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2000
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1400,
+    "max": 1600
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2100,
+    "max": 2400
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1400,
+    "max": 1700
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 1900,
+    "max": 2300
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1100,
+    "max": 1300
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 18000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 22000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 30000,
+    "max": 35000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 6000,
+    "max": 7000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 9000,
+    "max": 10000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 500,
+    "max": 600
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 650,
+    "max": 700
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 850
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 60,
+    "max": 80
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   }
+  }
+ },
+ {
+  "page": 73,
+  "code": "35",
+  "name": "CASTELDEBOLE",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3200
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 2800
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2300
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1800
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2600
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1400,
+    "max": 1700
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2300
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1300,
+    "max": 1400
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 14000,
+    "max": 16000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 18000,
+    "max": 22000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 30000,
+    "max": 35000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 6000,
+    "max": 8000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 9000,
+    "max": 10000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 500,
+    "max": 600
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 750
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 750,
+    "max": 900
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 80
+   }
+  }
+ },
+ {
+  "page": 75,
+  "code": "36",
+  "name": "BORGO PANIGALE SANTA VIOLA",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3000,
+    "max": 3500
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2600,
+    "max": 2800
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2400
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2000
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2800
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2100
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2800
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1600
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 18000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 25000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 35000,
+    "max": 40000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 8000,
+    "max": 9000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 12000,
+    "max": 13000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 500,
+    "max": 600
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 600,
+    "max": 750
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 750,
+    "max": 900
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 150
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 100
+   }
+  }
+ },
+ {
+  "page": 77,
+  "code": "37",
+  "name": "BORGO PANIGALE AEROPORTO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3200
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 2800
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2300
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1700
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2100,
+    "max": 2500
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1800
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2200
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1200,
+    "max": 1400
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 14000,
+    "max": 17000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 18000,
+    "max": 22000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 30000,
+    "max": 35000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 7000,
+    "max": 8000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 9000,
+    "max": 10000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 500,
+    "max": 600
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 650,
+    "max": 750
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 850
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 95
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 80
+   }
+  }
+ },
+ {
+  "page": 79,
+  "code": "38",
+  "name": "LAME PESCAROLA",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3200,
+    "max": 3700
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 2900
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2400
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 1800
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2100,
+    "max": 2500
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1900
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2000
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1100,
+    "max": 1450
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 18000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 22000,
+    "max": 28000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 30000,
+    "max": 35000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 6000,
+    "max": 8000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 8000,
+    "max": 10000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 650
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 800
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 850,
+    "max": 1000
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 95
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 100,
+    "max": 110
+   }
+  }
+ },
+ {
+  "page": 81,
+  "code": "39",
+  "name": "LAME NAVILE",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3000,
+    "max": 3500
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 2800
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 1900,
+    "max": 2300
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 1800
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2600
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 1800
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 1900,
+    "max": 2200
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1300,
+    "max": 1450
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 16000,
+    "max": 18000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 25000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 28000,
+    "max": 35000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 7000,
+    "max": 8000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 8000,
+    "max": 10000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 650
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 850
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 850,
+    "max": 1000
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 65,
+    "max": 75
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 120
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 75
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 100,
+    "max": 110
+   }
+  }
+ },
+ {
+  "page": 83,
+  "code": "40",
+  "name": "BOLOGNINA IPPODROMO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3200,
+    "max": 3700
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 3000
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2400
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 1900
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2900
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2000
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2500
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1300,
+    "max": 1500
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 18000,
+    "max": 20000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 26000,
+    "max": 28000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 30000,
+    "max": 35000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 8000,
+    "max": 10000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 10000,
+    "max": 12000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 650
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 850
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 850,
+    "max": 1000
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 85,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 130
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 65,
+    "max": 75
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 100
+   }
+  }
+ },
+ {
+  "page": 85,
+  "code": "41",
+  "name": "SAN VITALE PIANETA",
+  "values": {
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3000
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2600
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 1900
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2500
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 1900
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 18000,
+    "max": 22000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 30000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 650
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 800
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 950
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   }
+  }
+ },
+ {
+  "page": 87,
+  "code": "42",
+  "name": "MAZZINI DUE MADONNE",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3400
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 2800
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2400
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 1800
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1800
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2200
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1300,
+    "max": 1500
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 17000,
+    "max": 20000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 22000,
+    "max": 25000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 7000,
+    "max": 8000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 500,
+    "max": 600
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 650,
+    "max": 800
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 950
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 90
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 130
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 65,
+    "max": 75
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 90
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 100
+   }
+  }
+ },
+ {
+  "page": 89,
+  "code": "43",
+  "name": "MAZZINI SAVENA",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3200,
+    "max": 3800
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2700,
+    "max": 3000
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2600
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1900,
+    "max": 2200
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2800
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2000
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2800
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1400,
+    "max": 1800
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 24000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 24000,
+    "max": 30000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 8000,
+    "max": 10000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 650
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 850
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 850,
+    "max": 1000
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 85,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 120,
+    "max": 150
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 90
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 110
+   }
+  }
+ },
+ {
+  "page": 91,
+  "code": "44",
+  "name": "SAN RUFFILLO ORTOLANI",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3000,
+    "max": 3500
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2600,
+    "max": 2900
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2500
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1800,
+    "max": 2000
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2500
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 17000,
+    "max": 20000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 22000,
+    "max": 25000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 30000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 7000,
+    "max": 9000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 500,
+    "max": 600
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 650,
+    "max": 800
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 850,
+    "max": 950
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 100,
+    "max": 120
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   }
+  }
+ },
+ {
+  "page": 93,
+  "code": "45",
+  "name": "SAN RUFFILLO BELLARIA",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3300,
+    "max": 3900
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3100
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 2600
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1900,
+    "max": 2100
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2300,
+    "max": 2700
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1700,
+    "max": 2000
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2800
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1800
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 23000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 30000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 32000,
+    "max": 40000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 8000,
+    "max": 12000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 12000,
+    "max": 15000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 550,
+    "max": 700
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 900
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 900,
+    "max": 1150
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 85,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 110,
+    "max": 150
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 90,
+    "max": 120
+   }
+  }
+ },
+ {
+  "page": 95,
+  "code": "46",
+  "name": "COLLI GESSAROLI",
+  "values": {
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3300
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 2800
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2200
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 25000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 30000
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 700,
+    "max": 900
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 900,
+    "max": 1150
+   }
+  }
+ },
+ {
+  "page": 97,
+  "code": "47",
+  "name": "BORGO PANIGALE CASTELDEBOLE",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 2900,
+    "max": 3300
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 2700
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2100,
+    "max": 2400
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 1800
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2400
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 1900
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 1900,
+    "max": 2200
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1300,
+    "max": 1400
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 12000,
+    "max": 15000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 18000,
+    "max": 23000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 30000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 5000,
+    "max": 7000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 9000,
+    "max": 10000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 500,
+    "max": 600
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 650,
+    "max": 750
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 900
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 90
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   }
+  }
+ },
+ {
+  "page": 99,
+  "code": "48",
+  "name": "BORGO PANIGALE CENTRO",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3000,
+    "max": 3200
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2600,
+    "max": 2800
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2100,
+    "max": 2400
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1600
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2300
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1400,
+    "max": 1700
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2400
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1400,
+    "max": 1600
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 14000,
+    "max": 16000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 18000,
+    "max": 22000
+   },
+   "box_doppio": {
+    "unit": "eur_corpo",
+    "min": 25000,
+    "max": 30000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 5000,
+    "max": 7000
+   },
+   "posto_auto_coperto": {
+    "unit": "eur_corpo",
+    "min": 8000,
+    "max": 10000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 500,
+    "max": 600
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 650,
+    "max": 750
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 750,
+    "max": 850
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 65,
+    "max": 75
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 90,
+    "max": 120
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 60,
+    "max": 80
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 80
+   }
+  }
+ },
+ {
+  "page": 101,
+  "code": "49",
+  "name": "CORTICELLA DOZZA",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 2800,
+    "max": 3200
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2500,
+    "max": 2700
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2400
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 1800
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2000,
+    "max": 2400
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1800
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 18000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 25000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 500,
+    "max": 600
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 650,
+    "max": 750
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 850,
+    "max": 900
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 100
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 65,
+    "max": 75
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 80,
+    "max": 90
+   }
+  }
+ },
+ {
+  "page": 103,
+  "code": "50",
+  "name": "CORTICELLA",
+  "values": {
+   "abitazioni_nuovo": {
+    "unit": "eur_m2",
+    "min": 3000,
+    "max": 3600
+   },
+   "abitazioni_ristrutturato": {
+    "unit": "eur_m2",
+    "min": 2600,
+    "max": 2900
+   },
+   "abitazioni_buono": {
+    "unit": "eur_m2",
+    "min": 2200,
+    "max": 2500
+   },
+   "abitazioni_da_ristrutturare": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 1900
+   },
+   "uffici_nuovo": {
+    "unit": "eur_m2",
+    "min": 2100,
+    "max": 2500
+   },
+   "uffici_buono": {
+    "unit": "eur_m2",
+    "min": 1600,
+    "max": 1900
+   },
+   "negozi_elevato_interesse": {
+    "unit": "eur_m2",
+    "min": 2400,
+    "max": 2700
+   },
+   "negozi_scarso_interesse": {
+    "unit": "eur_m2",
+    "min": 1500,
+    "max": 1800
+   },
+   "box_entro_5m": {
+    "unit": "eur_corpo",
+    "min": 15000,
+    "max": 18000
+   },
+   "box_oltre_5m": {
+    "unit": "eur_corpo",
+    "min": 20000,
+    "max": 25000
+   },
+   "posto_auto_scoperto": {
+    "unit": "eur_corpo",
+    "min": 7000,
+    "max": 10000
+   },
+   "affitto_mono_bilocale": {
+    "unit": "eur_mese",
+    "min": 500,
+    "max": 650
+   },
+   "affitto_3_4_vani": {
+    "unit": "eur_mese",
+    "min": 650,
+    "max": 750
+   },
+   "affitto_5_vani": {
+    "unit": "eur_mese",
+    "min": 800,
+    "max": 950
+   },
+   "affitto_uffici_nuovo": {
+    "unit": "eur_m2_anno",
+    "min": 80,
+    "max": 110
+   },
+   "affitto_uffici_buono": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 80
+   },
+   "affitto_negozi_elevato": {
+    "unit": "eur_m2_anno",
+    "min": 120,
+    "max": 160
+   },
+   "affitto_negozi_scarso": {
+    "unit": "eur_m2_anno",
+    "min": 70,
+    "max": 90
+   },
+   "affitto_box_entro_5m": {
+    "unit": "eur_mese",
+    "min": 60,
+    "max": 70
+   },
+   "affitto_box_oltre_5m": {
+    "unit": "eur_mese",
+    "min": 70,
+    "max": 80
+   }
+  }
+ }
+]
