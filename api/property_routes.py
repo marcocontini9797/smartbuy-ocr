@@ -13,6 +13,7 @@ from api.session import user_client
 from api.intelligence_service import build_property_intelligence
 from document_engine.cross_validation import strip_accents
 from document_engine.geocoding import geocode
+from document_engine.market import build_market_context
 from document_engine.valuation import build_valuation, calibration_from_outcomes
 
 
@@ -148,10 +149,26 @@ def _valuation(property_id: int, client) -> dict:
     except Exception:
         outcomes = []
     sale = next(iter(_optional_rows(client, "valuation_outcomes", property_id)), None)
+    valuation = build_valuation(property_record=property_record, zone=zone, facts=facts, yield_stats=yield_stats,
+                                comparables=comparables, calibration=calibration_from_outcomes(outcomes, property_record.get("city")))
     return {"property_id": property_id, "comparables": sorted(comparables, key=lambda c: c.get("created_at") or ""),
-            "sale": sale,
-            **build_valuation(property_record=property_record, zone=zone, facts=facts, yield_stats=yield_stats,
-                              comparables=comparables, calibration=calibration_from_outcomes(outcomes, property_record.get("city")))}
+            "sale": sale, **valuation, "market": _market(client, zone, kind, (valuation.get("surface") or {}).get("value"))}
+
+
+def _market(client, zone: dict | None, kind: str, surface: float | None) -> dict | None:
+    """Transaction volumes of the municipality's area (context, never blocks the valuation)."""
+    if not zone or not zone.get("comune_cat"):
+        return None
+    try:
+        comune = (client.table("istat_comuni").select("nome,sigla_provincia,capoluogo")
+                  .eq("codice_catastale", zone["comune_cat"]).limit(1).execute().data or [None])[0]
+        if not comune:
+            return None
+        rows = client.table("market_volumes").select("*").eq("provincia", comune["sigla_provincia"]).execute().data or []
+    except Exception:
+        return None
+    return build_market_context(rows, kind=kind, capoluogo=comune["capoluogo"], provincia=comune["sigla_provincia"],
+                                comune=comune["nome"], surface=surface)
 
 
 class NewComparable(BaseModel):
