@@ -22,7 +22,8 @@ def items(result):
 
 def test_empty_file_lists_every_document_as_missing():
     result = build_checklist(property_record=PROPERTY, documents=[], findings=[], today=TODAY)
-    assert {i["status"] for i in result["items"]} == {"missing"}
+    assert {i["status"] for i in result["items"] if i["requirement"] != "conditional"} == {"missing"}
+    assert items(result)["certificato_prevenzione_incendi"]["status"] == "to_check"
     assert result["summary"]["tone"] == "missing"
     assert result["summary"]["missing_required"] == result["summary"]["required_total"] == 6
     assert items(result)["ape"]["action"] == "Richiedere: ape – attestato di prestazione energetica (venditore)"
@@ -81,8 +82,8 @@ def test_commercial_checklist_requires_agibilita_and_systems_and_asks_for_lease(
     by_key = items(result)
     assert by_key["certificato_agibilita"]["requirement"] == "required"
     assert by_key["dichiarazione_conformita_impianti"]["requirement"] == "required"
-    assert by_key["contratto_locazione"]["requirement"] == "leased"
-    assert result["summary"]["required_total"] == 8
+    assert by_key["contratto_locazione"]["requirement"] == "conditional"
+    assert result["summary"]["required_total"] == 7  # APE applicability is still unknown
     assert "commerciale" in result["note"]
 
 

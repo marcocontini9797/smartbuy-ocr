@@ -4,11 +4,12 @@ from core.operational_models import DocumentRequest
 from document_engine.operational_services import APE_REGISTRY, PROVINCE_REGION
 from document_engine.request_composer import compose_request_message, content_hash, field_gaps_for_item
 from document_engine.typology import TYPOLOGIES, typology_of
+from document_engine.workflow_context import applicability, QUESTIONS
 from integrations import openapi_catasto
 
 _NOT_BOX = frozenset(TYPOLOGIES) - {"box"}  # A garage/parking space does not need an APE.
-_RETAIL_LIKE = frozenset({"negozio", "ufficio", "centro_commerciale"})
-_LARGE_OR_INDUSTRIAL = frozenset({"capannone", "magazzino", "centro_commerciale"})
+_RETAIL_LIKE = frozenset(k for k, t in TYPOLOGIES.items() if t.asset == "commerciale")
+_LARGE_OR_INDUSTRIAL = frozenset(TYPOLOGIES)
 _APE_REGIONAL_URL = {"ER": "https://sace-er.regione.emilia-romagna.it/ui/ape/public-registry",
                      "LOM": "https://areaoperativa.cened.it/extcatasto/html/public/visuraApe.jsf"}
 
@@ -21,8 +22,8 @@ CATALOGUE = [
     ("elaborato_planimetrico", "Elaborato planimetrico", "professional", "cadastral", "sale", (), None),
     ("ispezione_ipotecaria", "Ispezione ipotecaria", "professional", "cadastral", "sale", ("visura_ipotecaria",), None),
     ("atto_provenienza", "Atto di provenienza", "seller", "ownership", None, ("atto_compravendita", "atto_proprieta"), None),
-    ("titoli_edilizi", "Titoli edilizi e varianti disponibili", "seller", "planning", "sale", ("permesso_costruire",), None),
-    ("agibilita", "Documentazione di agibilità disponibile", "seller", "planning", "sale", (), None),
+    ("titoli_edilizi", "Titoli edilizi e varianti disponibili", "seller", "planning", "planning", ("permesso_costruire",), None),
+    ("agibilita", "Documentazione di agibilità disponibile", "seller", "planning", "planning", (), None),
     ("regolamento_condominiale", "Regolamento condominiale", "administrator", "condominium", "condominium", (), None),
     ("verbali_assembleari", "Ultimi verbali assembleari", "administrator", "condominium", "condominium", (), None),
     ("consuntivo_condominiale", "Ultimo consuntivo", "administrator", "condominium", "condominium", (), None),
@@ -36,8 +37,8 @@ CATALOGUE = [
     ("donazione", "Atto di donazione", "seller", "ownership", "donation", (), None),
     ("procura", "Procura", "seller", "ownership", "proxy", (), None),
     ("visura_camerale", "Visura camerale e poteri di firma", "professional", "ownership", "company", (), None),
-    ("scia_licenza_commerciale", "SCIA o licenza per l'attività commerciale", "seller", "planning", None, (), _RETAIL_LIKE),
-    ("certificato_prevenzione_incendi", "Certificato di prevenzione incendi (CPI/SCIA antincendio)", "seller", "planning", None, (), _LARGE_OR_INDUSTRIAL),
+    ("scia_licenza_commerciale", "SCIA o licenza per l'attività commerciale", "seller", "planning", "activity", (), _RETAIL_LIKE),
+    ("certificato_prevenzione_incendi", "Certificato di prevenzione incendi (CPI/SCIA antincendio)", "seller", "planning", "fire", (), _LARGE_OR_INDUSTRIAL),
 ]
 
 
@@ -50,7 +51,7 @@ def canonical_type(value):
 
 
 def build_document_packages(property_record, documents, existing_requests):
-    purpose = property_record.get("purpose") or property_record.get("transaction_type")
+    purpose = property_record.get("contract") or property_record.get("purpose") or property_record.get("transaction_type")
     typology_key = typology_of(property_record).key
     conditions = {
         "sale": purpose in {"sale", "vendita", "acquisto"},
@@ -62,17 +63,24 @@ def build_document_packages(property_record, documents, existing_requests):
         "proxy": property_record.get("has_proxy"),
         "company": property_record.get("seller_type") == "company" if property_record.get("seller_type") else None,
     }
+    conditions.update(applicability(property_record))
+    commercial = typology_of(property_record).asset == "commerciale"
+    conditions["planning"] = conditions["sale"] or commercial
     present = {canonical_type(d.get("document_type")) for d in documents
                if d.get("processing_status") not in {"failed", "rejected"}}
     existing = {canonical_type(r.get("document_type")): r for r in existing_requests}
     packages = defaultdict(list)
     checks = []
+    if commercial and not (property_record.get("workflow_context") or {}).get("intended_use", "").strip():
+        checks.append({"document_type":"intended_use", "title":"Uso previsto del locale", "condition":"activity", "question":"Indica quale attività si vuole svolgere in Personalizza il percorso; poi verifica la compatibilità con Comune o tecnico."})
     for key, title, recipient, package, condition, _, typologies in CATALOGUE:
         if typologies is not None and typology_key not in typologies:
             continue
+        if key == "ape" and commercial:
+            condition = "ape"
         if condition and conditions[condition] is not True:
             if conditions[condition] is None or (condition == "sale" and not purpose):
-                checks.append({"document_type": key, "condition": condition})
+                checks.append({"document_type": key, "condition": condition, "title": title, "question": QUESTIONS.get(condition, "Chiarire le caratteristiche della pratica.")})
             continue
         previous = existing.get(key)
         status = "present" if key in present else (previous["status"] if previous else "draft")

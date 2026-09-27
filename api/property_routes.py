@@ -19,11 +19,12 @@ from document_engine.hazards import point_hazards
 from document_engine.market import build_market_context
 from document_engine.territory import build_territory, fiaip_reference, ipab_area, price_update, year_update
 from document_engine.typology import TYPOLOGIES, typology_of
+from document_engine.workflow_context import WorkflowContext
 from document_engine.valuation import build_valuation, calibration_from_outcomes
 
 
 router = APIRouter(prefix="/api/v1", tags=["workspace"])
-Typology = Literal["appartamento", "villa", "box", "negozio", "ufficio", "capannone", "magazzino", "centro_commerciale"]
+Typology = Literal["appartamento", "villa", "box", "negozio", "ufficio", "capannone", "laboratorio", "magazzino", "centro_commerciale"]
 
 
 def _rows(client, table: str, property_id: int) -> list[dict]:
@@ -56,6 +57,7 @@ class NewProperty(BaseModel):
     property_type: Literal["residenziale", "commerciale"] | None = None
     typology: Typology | None = None
     contract: Literal["vendita", "affitto"] = "vendita"
+    workflow_context: WorkflowContext = Field(default_factory=WorkflowContext)
 
 
 def _with_asset_class(data: dict) -> dict:
@@ -87,6 +89,7 @@ class PropertyUpdate(BaseModel):
     property_type: Literal["residenziale", "commerciale"] | None = None
     typology: Typology | None = None
     contract: Literal["vendita", "affitto"] | None = None
+    workflow_context: WorkflowContext | None = None
     is_condominio: bool | None = None
     surface_m2: float | None = Field(default=None, gt=0, le=100000)
     floor: int | None = Field(default=None, ge=-5, le=200)
@@ -100,8 +103,10 @@ class PropertyUpdate(BaseModel):
 
 @router.patch("/properties/{property_id}")
 def update_property(property_id: int, payload: PropertyUpdate, client=Depends(user_client)):
-    get_property(property_id, client)
+    current = get_property(property_id, client)
     changes = payload.model_dump(exclude_unset=True)
+    if "workflow_context" in changes:
+        changes["workflow_context"] = {**(current.get("workflow_context") or {}), **(changes["workflow_context"] or {})}
     if not changes:
         raise HTTPException(status_code=400, detail="Nothing to update")
     if changes.get("fiaip_zone") == "":

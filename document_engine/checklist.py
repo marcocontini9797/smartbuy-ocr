@@ -15,14 +15,15 @@ Status of each item, worst first:
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import date
 from typing import Any
 
 from core.operational_models import CrossValidationFinding
 from fascicolo import Fascicolo, aggiungi_al_fascicolo
 from document_engine.cross_validation import _expand, norm_categoria
-from document_engine.typology import Typology, contract_of, typology_of
+from document_engine.typology import Typology, contract_of, typology_of, TYPOLOGIES
+from document_engine.workflow_context import applicability, document_condition, QUESTIONS
 from red_flags import run_all_red_flags
 from schemas import SCHEMA_REGISTRY, TipoDocumento
 
@@ -70,13 +71,13 @@ SALE_CHECKLIST: tuple[ChecklistSpec, ...] = (
 
 _NEGOZIO = frozenset({"negozio"})
 _UFFICIO = frozenset({"ufficio"})
-_CAPANNONE = frozenset({"capannone"})
+_CAPANNONE = frozenset({"capannone", "laboratorio"})
 _MAGAZZINO = frozenset({"magazzino"})
 _CENTRO_COMMERCIALE = frozenset({"centro_commerciale"})
 # Typologies where a SCIA/licenza commerciale (retail or public-facing activity)
 # and a CPI (larger or industrial spaces) are realistically expected.
-_SCIA_TYPOLOGIES = frozenset({"negozio", "ufficio", "centro_commerciale"})
-_CPI_TYPOLOGIES = frozenset({"capannone", "magazzino", "centro_commerciale"})
+_SCIA_TYPOLOGIES = frozenset(k for k, t in TYPOLOGIES.items() if t.asset == "commerciale")
+_CPI_TYPOLOGIES = frozenset(TYPOLOGIES)
 
 # Commercial unit: agibilità and systems are needed to open a business, the
 # building titles must show the commercial use, and a lease in place brings
@@ -194,6 +195,8 @@ COMMERCIAL_LEASE_CHECKLIST: tuple[ChecklistSpec, ...] = (
 
 def specs_for(property_record: dict[str, Any]) -> tuple[ChecklistSpec, ...]:
     typology, contract = typology_of(property_record), contract_of(property_record)
+    if contract == "affitto" and typology.key == "box":
+        return tuple(s for s in BOX_CHECKLIST if s.key not in {"visura_ipotecaria", "titolo_edilizio"})
     if contract == "affitto":
         return COMMERCIAL_LEASE_CHECKLIST if typology.asset == "commerciale" else LEASE_CHECKLIST
     if typology.key == "box":
@@ -327,9 +330,20 @@ def build_checklist(
     is_condominium = property_record.get("is_condominio")
     typology, contract = typology_of(property_record), contract_of(property_record)
     specs = tuple(s for s in specs_for(property_record) if s.typologies is None or typology.key in s.typologies)
+    if not any(s.key == "certificato_prevenzione_incendi" for s in specs):
+        specs += (ChecklistSpec("certificato_prevenzione_incendi", "Documentazione antincendio", "Verificare l’assoggettamento in base alle caratteristiche e all’uso.", "Proprietario o tecnico", "recommended"),)
+    conditions = applicability(property_record)
+    conditional = {}
+    for spec in specs:
+        condition = document_condition(spec.key, typology.asset == "commerciale")
+        if condition:
+            conditional[spec.key] = condition
+    specs = tuple(replace(s, requirement="conditional") if s.key in conditional and conditions[conditional[s.key]] is None else s for s in specs)
     items: dict[str, ChecklistItem] = {}
     for spec in specs:
         applicable = spec.requirement != "condominium" or is_condominium is not False
+        if spec.key in conditional and conditions[conditional[spec.key]] is False:
+            applicable = False
         items[spec.key] = ChecklistItem(spec.key, spec.title, spec.why, spec.provided_by, spec.requirement, applicable)
 
     kind_by_document: dict[str, str] = {}
@@ -366,7 +380,10 @@ def build_checklist(
 
     for item in items.values():
         levels = {issue["level"] for issue in item.issues}
-        if not item.documents:
+        if item.requirement == "conditional" and not item.documents:
+            item.status = "to_check"
+            item.action = QUESTIONS[conditional[item.key]]
+        elif not item.documents:
             item.status = "missing"
             item.action = f"Richiedere: {item.title.lower()} ({item.provided_by.lower()})"
         elif "problem" in levels:
@@ -380,10 +397,10 @@ def build_checklist(
 
     # Fixed, logical document order (as a notary checklist); non-applicable items last.
     ordered = sorted(items.values(), key=lambda i: not i.applicable)
-    required = [i for i in items.values() if i.requirement == "required"]
+    required = [i for i in items.values() if i.requirement == "required" and i.applicable]
     required_present = sum(1 for i in required if i.documents)
-    problems = [i for i in items.values() if i.status == "problem"] + [g for g in general if g["level"] == "problem"]
-    to_check = [i for i in items.values() if i.status == "to_check"] + [g for g in general if g["level"] == "to_check"]
+    problems = [i for i in items.values() if i.status == "problem" and i.applicable] + [g for g in general if g["level"] == "problem"]
+    to_check = [i for i in items.values() if i.status == "to_check" and i.applicable] + [g for g in general if g["level"] == "to_check"]
     missing_required = [i for i in required if not i.documents]
 
     if problems:

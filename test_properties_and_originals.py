@@ -72,6 +72,7 @@ def test_new_property_is_owned_by_the_signed_in_user():
     created = create_property(NewProperty(address="  Via Vizzani 72 ", city="Bologna", surface_m2=92), client)
     op, table, payload, _ = client.calls[0]
     assert (op, table) == ("insert", "properties")
+    assert payload.pop("workflow_context")["occupancy"] == "unknown"
     assert payload == {"address": "Via Vizzani 72", "city": "Bologna", "surface_m2": 92.0, "is_condominio": True, "property_type": "residenziale", "typology": "appartamento", "contract": "vendita", "user_id": "user-1"}
     assert created["id"] == 99
 
