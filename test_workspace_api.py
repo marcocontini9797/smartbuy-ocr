@@ -14,10 +14,13 @@ def test_requires_session():
     assert response.status_code == 401
 
 
-def test_health_and_unconfigured_agent():
+def test_health_and_agent_requires_session():
     client = TestClient(app)
     assert client.get('/health').status_code == 200
-    assert client.post('/agent/ask', json={'property_id':16,'question':'test'}).status_code == 503
+    # Agent route is now under /properties/{id}/agent/ask and requires a session
+    # like every other property route (it used to accept property_id/user_id as
+    # plain body fields with no auth check at all).
+    assert client.post('/api/v1/properties/16/agent/ask', json={'question': 'test'}).status_code == 401
 
 
 def test_missing_property_does_not_load_other_data():

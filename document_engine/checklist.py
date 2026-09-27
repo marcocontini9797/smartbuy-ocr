@@ -35,6 +35,7 @@ class ChecklistSpec:
     provided_by: str
     requirement: str  # "required" | "recommended" | "condominium" | "leased"
     red_flag_categories: tuple[str, ...] = ()
+    typologies: frozenset[str] | None = None  # None = every typology of the bucket's asset class
 
 
 _MORTGAGE_WHY = ("Mostra ipoteche, pignoramenti, provenienza e altre formalità sull'immobile. Da fare prima della proposta: "
@@ -67,12 +68,32 @@ SALE_CHECKLIST: tuple[ChecklistSpec, ...] = (
                   "Amministratore", "condominium", ("condominio",)),
 )
 
-# Commercial unit (shop): agibilità and systems are needed to open a business,
-# the building titles must show the commercial use, and a lease in place
-# brings registration and the tenant's pre-emption right.
+_NEGOZIO = frozenset({"negozio"})
+_UFFICIO = frozenset({"ufficio"})
+_CAPANNONE = frozenset({"capannone"})
+_MAGAZZINO = frozenset({"magazzino"})
+_CENTRO_COMMERCIALE = frozenset({"centro_commerciale"})
+# Typologies where a SCIA/licenza commerciale (retail or public-facing activity)
+# and a CPI (larger or industrial spaces) are realistically expected.
+_SCIA_TYPOLOGIES = frozenset({"negozio", "ufficio", "centro_commerciale"})
+_CPI_TYPOLOGIES = frozenset({"capannone", "magazzino", "centro_commerciale"})
+
+# Commercial unit: agibilità and systems are needed to open a business, the
+# building titles must show the commercial use, and a lease in place brings
+# registration and the tenant's pre-emption right. The expected cadastral
+# category (and whether a SCIA/CPI applies) differs by exact typology, so
+# those items are typology-scoped instead of shared across all five.
 COMMERCIAL_CHECKLIST: tuple[ChecklistSpec, ...] = (
-    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, l'intestatario e la categoria catastale (per un negozio di solito C/1).",
-                  "Venditore o tecnico", "required"),
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, l'intestatario e la categoria catastale attesa: C/1 (negozi) o C/3 (laboratori).",
+                  "Venditore o tecnico", "required", typologies=_NEGOZIO),
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, l'intestatario e la categoria catastale attesa: A/10 (uffici) o D/5 (istituti di credito/assicurazione).",
+                  "Venditore o tecnico", "required", typologies=_UFFICIO),
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, l'intestatario e la categoria catastale attesa: D/1 o D/7 (capannoni industriali/artigianali).",
+                  "Venditore o tecnico", "required", typologies=_CAPANNONE),
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, l'intestatario e la categoria catastale attesa: C/2 (magazzini/depositi).",
+                  "Venditore o tecnico", "required", typologies=_MAGAZZINO),
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, l'intestatario e la categoria catastale attesa: D/8 (fabbricati commerciali).",
+                  "Venditore o tecnico", "required", typologies=_CENTRO_COMMERCIALE),
     ChecklistSpec("planimetria", "Planimetria catastale", "Serve a verificare la conformità catastale, da dichiarare nell'atto.",
                   "Venditore", "required", ("conformita_catastale",)),
     ChecklistSpec("ape", "APE – Attestato di prestazione energetica", "Obbligatorio anche per i locali commerciali, va allegato all'atto.",
@@ -91,6 +112,10 @@ COMMERCIAL_CHECKLIST: tuple[ChecklistSpec, ...] = (
                   "Venditore", "leased", ("locazione",)),
     ChecklistSpec("relazione_tecnica_integrata", "Relazione tecnica integrata", "Un tecnico verifica conformità catastale, urbanistica e destinazione d'uso.",
                   "Tecnico incaricato", "recommended", ("conformita_tecnica",)),
+    ChecklistSpec("scia_licenza_commerciale", "SCIA o licenza per l'attività commerciale", "Conferma che l'attività effettivamente svolta nel locale è autorizzata.",
+                  "Venditore", "recommended", typologies=_SCIA_TYPOLOGIES),
+    ChecklistSpec("certificato_prevenzione_incendi", "Certificato di prevenzione incendi (CPI/SCIA antincendio)", "Necessario se l'attività o la superficie superano le soglie del DPR 151/2011.",
+                  "Venditore", "recommended", typologies=_CPI_TYPOLOGIES),
     ChecklistSpec("regolamento_condominio", "Regolamento di condominio", "Può vietare o limitare alcune attività commerciali nel locale.",
                   "Amministratore", "condominium"),
     ChecklistSpec("verbale_assemblea_condominio", "Ultimi verbali di assemblea", "Lavori deliberati, spese straordinarie e morosità da chiarire prima del rogito.",
@@ -137,8 +162,16 @@ LEASE_CHECKLIST: tuple[ChecklistSpec, ...] = (
 
 # Lease of a commercial unit: the use must allow the tenant's business.
 COMMERCIAL_LEASE_CHECKLIST: tuple[ChecklistSpec, ...] = (
-    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, chi lo affitta e la categoria catastale.",
-                  "Proprietario o tecnico", "required"),
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, chi lo affitta e la categoria catastale attesa: C/1 (negozi) o C/3 (laboratori).",
+                  "Proprietario o tecnico", "required", typologies=_NEGOZIO),
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, chi lo affitta e la categoria catastale attesa: A/10 (uffici) o D/5 (istituti di credito/assicurazione).",
+                  "Proprietario o tecnico", "required", typologies=_UFFICIO),
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, chi lo affitta e la categoria catastale attesa: D/1 o D/7 (capannoni industriali/artigianali).",
+                  "Proprietario o tecnico", "required", typologies=_CAPANNONE),
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, chi lo affitta e la categoria catastale attesa: C/2 (magazzini/depositi).",
+                  "Proprietario o tecnico", "required", typologies=_MAGAZZINO),
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il locale, chi lo affitta e la categoria catastale attesa: D/8 (fabbricati commerciali).",
+                  "Proprietario o tecnico", "required", typologies=_CENTRO_COMMERCIALE),
     ChecklistSpec("ape", "APE – Attestato di prestazione energetica", "Obbligatorio anche per i locali commerciali in affitto.",
                   "Proprietario", "required", ("ape",)),
     ChecklistSpec("titolo_edilizio", "Titoli edilizi e destinazione d'uso", "L'attività dell'inquilino deve essere compatibile con la destinazione d'uso legittima.",
@@ -150,6 +183,10 @@ COMMERCIAL_LEASE_CHECKLIST: tuple[ChecklistSpec, ...] = (
     ChecklistSpec("planimetria", "Planimetria catastale", "Descrive i locali consegnati.", "Proprietario", "recommended", ("conformita_catastale",)),
     ChecklistSpec("visura_ipotecaria", "Ispezione ipotecaria", "Un pignoramento anteriore al contratto può renderlo inopponibile all'acquirente all'asta.",
                   "Agente (Sister o SPID)", "recommended", ("formalita_pregiudizievoli",)),
+    ChecklistSpec("scia_licenza_commerciale", "SCIA o licenza per l'attività commerciale", "Il conduttore deve poter ottenere o subentrare in un titolo valido per l'attività prevista.",
+                  "Proprietario o conduttore", "recommended", typologies=_SCIA_TYPOLOGIES),
+    ChecklistSpec("certificato_prevenzione_incendi", "Certificato di prevenzione incendi (CPI/SCIA antincendio)", "Necessario se l'attività o la superficie superano le soglie del DPR 151/2011.",
+                  "Proprietario", "recommended", typologies=_CPI_TYPOLOGIES),
     ChecklistSpec("regolamento_condominio", "Regolamento di condominio", "Può vietare o limitare alcune attività commerciali nel locale.",
                   "Amministratore", "condominium"),
 )
@@ -289,7 +326,7 @@ def build_checklist(
 ) -> dict[str, Any]:
     is_condominium = property_record.get("is_condominio")
     typology, contract = typology_of(property_record), contract_of(property_record)
-    specs = specs_for(property_record)
+    specs = tuple(s for s in specs_for(property_record) if s.typologies is None or typology.key in s.typologies)
     items: dict[str, ChecklistItem] = {}
     for spec in specs:
         applicable = spec.requirement != "condominium" or is_condominium is not False

@@ -25,8 +25,10 @@ from schemas import (
     AttoDiProvenienza,
     CertificatoAgibilita,
     CertificatoDestinazioneUrbanistica,
+    CertificatoPrevenzioneIncendi,
     ContrattoLocazione,
     DichiarazioneConformitaImpianti,
+    LicenzaCommerciale,
     PeriziaDiStima,
     Planimetria,
     PreliminareCompravendita,
@@ -35,6 +37,7 @@ from schemas import (
     TipoDocumento,
     TitoloEdilizio,
     VerbaleAssembleaCondominio,
+    VisuraCamerale,
     VisuraCatastale,
     VisuraIpotecaria,
 )
@@ -55,6 +58,9 @@ class Fascicolo:
     regolamento_condominio: Optional[RegolamentoCondominio] = None
     atto_provenienza: Optional[AttoDiProvenienza] = None
     relazione_tecnica_integrata: Optional[RelazioneTecnicaIntegrata] = None
+    licenza_commerciale: Optional[LicenzaCommerciale] = None
+    certificato_prevenzione_incendi: Optional[CertificatoPrevenzioneIncendi] = None
+    visura_camerale: Optional[VisuraCamerale] = None
 
     visure_ipotecarie: list[VisuraIpotecaria] = field(default_factory=list)
     perizie_di_stima: list[PeriziaDiStima] = field(default_factory=list)
@@ -96,6 +102,9 @@ class Fascicolo:
             self.regolamento_condominio,
             self.atto_provenienza,
             self.relazione_tecnica_integrata,
+            self.licenza_commerciale,
+            self.certificato_prevenzione_incendi,
+            self.visura_camerale,
         ]
         multipli = (
             self.visure_ipotecarie
@@ -120,6 +129,9 @@ _SINGOLO_FIELD_BY_TIPO = {
     TipoDocumento.REGOLAMENTO_CONDOMINIO: "regolamento_condominio",
     TipoDocumento.ATTO_DI_PROVENIENZA: "atto_provenienza",
     TipoDocumento.RELAZIONE_TECNICA_INTEGRATA: "relazione_tecnica_integrata",
+    TipoDocumento.LICENZA_COMMERCIALE: "licenza_commerciale",
+    TipoDocumento.CERTIFICATO_PREVENZIONE_INCENDI: "certificato_prevenzione_incendi",
+    TipoDocumento.VISURA_CAMERALE: "visura_camerale",
 }
 _MULTIPLO_FIELD_BY_TIPO = {
     TipoDocumento.VISURA_IPOTECARIA: "visure_ipotecarie",

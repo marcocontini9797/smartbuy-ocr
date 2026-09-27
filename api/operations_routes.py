@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from api.property_routes import _rows, get_property
+from api.property_routes import _optional_rows, _rows, get_property
 from api.session import user_client
 from core.operational_models import DocumentRequest
 from document_engine.checklist import build_checklist
@@ -133,8 +133,7 @@ def create_document_request(property_id: int, payload: DocumentRequestInput, cli
     return (result.data or [request.model_dump(mode="json")])[0]
 
 
-@router.get("/properties/{property_id}/document-packages")
-def document_packages(property_id: int, client=Depends(user_client)):
+def _document_packages_plan(property_id: int, client) -> tuple[dict, dict]:
     from document_engine.document_acquisition import build_document_packages
     prop = get_property(property_id, client)
     analyses = _rows(client, "document_analyses", property_id)
@@ -143,15 +142,34 @@ def document_packages(property_id: int, client=Depends(user_client)):
         documents = client.table("documents").select("*").in_("id", ids).execute().data or [] if ids else []
     except Exception as exc:
         raise HTTPException(502, "Document service unavailable") from exc
-    return build_document_packages(prop, documents, _rows(client, "smartbuy_document_requests", property_id))
+    plan = build_document_packages(prop, documents, _rows(client, "smartbuy_document_requests", property_id))
+    return plan, prop
+
+
+@router.get("/properties/{property_id}/document-packages")
+def document_packages(property_id: int, client=Depends(user_client)):
+    from document_engine.document_acquisition import apply_request_messages
+    plan, prop = _document_packages_plan(property_id, client)
+    # Read-only: serves whatever letter is already cached, never calls the AI here.
+    plan, _ = apply_request_messages(plan, prop, _optional_rows(client, "smartbuy_request_messages", property_id), generate=False)
+    return plan
 
 
 @router.post("/properties/{property_id}/document-packages/prepare")
 def prepare_document_packages(property_id: int, client=Depends(user_client)):
-    from document_engine.document_acquisition import persist_request_drafts
-    plan = document_packages(property_id, client)
+    from document_engine.document_acquisition import apply_request_messages, persist_request_drafts
+    plan, prop = _document_packages_plan(property_id, client)
     try:
         result = persist_request_drafts(client, plan)
     except Exception as exc:
         raise HTTPException(502, "Unable to persist document requests; retry safely") from exc
-    return {**result, "plan": document_packages(property_id, client)}
+    plan, _ = _document_packages_plan(property_id, client)
+    plan, to_persist = apply_request_messages(
+        plan, prop, _optional_rows(client, "smartbuy_request_messages", property_id), generate=True)
+    if to_persist:
+        try:
+            client.table("smartbuy_request_messages").upsert(
+                to_persist, on_conflict="property_id,recipient_role").execute()
+        except Exception:
+            pass  # composed letters still returned in `plan`; just not cached for next time
+    return {**result, "plan": plan}

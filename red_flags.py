@@ -755,6 +755,74 @@ def check_ape_scaduto(fascicolo: Fascicolo, oggi: Optional[date] = None) -> list
     ]
 
 
+def check_cpi_scaduto(fascicolo: Fascicolo, oggi: Optional[date] = None) -> list[RedFlag]:
+    """Il certificato di prevenzione incendi ha validità periodica (tipicamente
+    5 anni, salvo variazioni per categoria di rischio): un CPI scaduto
+    significa che l'attività soggetta al DPR 151/2011 non può legalmente
+    proseguire finché non viene rinnovato — rilevante per capannoni,
+    magazzini e centri commerciali.
+
+    Controllo puramente deterministico (confronto date), stesso schema di
+    check_ape_scaduto.
+    """
+    cpi = fascicolo.certificato_prevenzione_incendi
+    if not cpi or not cpi.data_scadenza:
+        return []
+    scadenza = _parse_data(cpi.data_scadenza)
+    if not scadenza:
+        return []
+    oggi = oggi or date.today()
+    if scadenza >= oggi:
+        return []
+    return [
+        RedFlag(
+            categoria="cpi",
+            titolo="Certificato di prevenzione incendi scaduto",
+            gravita="alta",
+            descrizione=(
+                f"Il certificato di prevenzione incendi risulta scaduto il {cpi.data_scadenza}. "
+                "L'attività soggetta non può proseguire legalmente finché non viene rinnovato: "
+                "va verificato prima di procedere, non solo segnalato al futuro gestore."
+            ),
+            riferimento="DPR 151/2011 sulla prevenzione incendi",
+            azione_consigliata="Verificare con i Vigili del Fuoco lo stato di rinnovo prima di fissare la data del rogito.",
+        )
+    ]
+
+
+def check_societa_venditrice_non_attiva(fascicolo: Fascicolo) -> list[RedFlag]:
+    """Se il venditore è una società, il suo stato al Registro Imprese
+    condiziona la validità dell'atto: una società cessata, in liquidazione o
+    sottoposta a procedura concorsuale (fallimento, concordato preventivo)
+    richiede verifiche aggiuntive sui poteri di chi firma (curatore,
+    liquidatore) prima di procedere.
+
+    Controllo deterministico su parole chiave nello stato estratto dalla
+    visura camerale: non sostituisce una verifica diretta al Registro Imprese.
+    """
+    visura = fascicolo.visura_camerale
+    if not visura or not visura.stato_attivita:
+        return []
+    stato = visura.stato_attivita.strip().casefold()
+    problem_keywords = ("cessat", "liquidazion", "fallimento", "concordato", "procedura concorsuale", "inattiv", "sospes", "radiat")
+    if not any(keyword in stato for keyword in problem_keywords):
+        return []
+    return [
+        RedFlag(
+            categoria="visura_camerale",
+            titolo="Società venditrice non risulta attiva",
+            gravita="alta",
+            descrizione=(
+                f"La visura camerale riporta lo stato \"{visura.stato_attivita}\" per {visura.ragione_sociale or 'la società venditrice'}. "
+                "Una società non attiva richiede di verificare chi ha effettivamente i poteri di firma per l'atto "
+                "(es. curatore fallimentare, liquidatore) prima di procedere."
+            ),
+            riferimento="Verifica dei poteri di firma in caso di procedure concorsuali o scioglimento societario",
+            azione_consigliata="Richiedere una visura camerale aggiornata e verificare con un notaio chi ha i poteri di firma.",
+        )
+    ]
+
+
 def check_ape_non_menzionato_in_atto(fascicolo: Fascicolo) -> list[RedFlag]:
     """La clausola sull'APE nell'atto di compravendita, non solo l'esistenza
     di un APE valido (quella la copre già `check_ape_scaduto`, su un
@@ -1401,6 +1469,8 @@ _ALL_CHECKS = [
     check_agibilita_mancante,
     check_conformita_impianti_assente,
     check_ape_scaduto,
+    check_cpi_scaduto,
+    check_societa_venditrice_non_attiva,
     check_ape_non_menzionato_in_atto,
     check_vincoli_regolamento_condominio,
     check_spese_straordinarie_ante_rogito,

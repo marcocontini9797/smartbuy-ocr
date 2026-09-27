@@ -6,6 +6,7 @@ parallel persistence models or duplicate tables.
 
 from fastapi import APIRouter, HTTPException, Query, Depends
 import re
+import secrets
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
@@ -22,7 +23,7 @@ from document_engine.valuation import build_valuation, calibration_from_outcomes
 
 
 router = APIRouter(prefix="/api/v1", tags=["workspace"])
-Typology = Literal["appartamento", "villa", "box", "negozio", "ufficio", "capannone", "magazzino"]
+Typology = Literal["appartamento", "villa", "box", "negozio", "ufficio", "capannone", "magazzino", "centro_commerciale"]
 
 
 def _rows(client, table: str, property_id: int) -> list[dict]:
@@ -94,6 +95,7 @@ class PropertyUpdate(BaseModel):
     energy_class: str | None = Field(default=None, max_length=3)
     asking_price: float | None = Field(default=None, ge=0)
     fiaip_zone: str | None = Field(default=None, max_length=10, pattern=r"^$|^\d{1,2}[ab]?(/\d{1,2}[ab]?)?$")
+    canone_mensile_eur: float | None = Field(default=None, ge=0)
 
 
 @router.patch("/properties/{property_id}")
@@ -452,4 +454,34 @@ def get_property_intelligence(property_id: int, client=Depends(user_client)):
         analyses=analyses,
         provenance=provenance,
     )
+
+
+@router.post("/properties/{property_id}/share")
+def enable_share(property_id: int, client=Depends(user_client)):
+    """Turn on (or re-fetch, if already on) the read-only public link for this fascicolo.
+
+    Reuses the existing token when sharing was already on: re-enabling after a
+    DELETE always gets a fresh one there, so this never resurrects a token the
+    agent believed revoked.
+    """
+    record = get_property(property_id, client)
+    token = record.get("share_token") if record.get("share_enabled") else secrets.token_urlsafe(32)
+    try:
+        response = client.table("properties").update({"share_token": token, "share_enabled": True}).eq("id", property_id).execute()
+    except Exception as exc:
+        raise HTTPException(502, "Unable to enable sharing") from exc
+    row = (response.data or [{}])[0]
+    return {"share_token": row.get("share_token"), "share_enabled": row.get("share_enabled")}
+
+
+@router.delete("/properties/{property_id}/share")
+def disable_share(property_id: int, client=Depends(user_client)):
+    """Revoke the public link: the old token stops working immediately, and
+    re-enabling sharing later always mints a new one (see enable_share)."""
+    get_property(property_id, client)
+    try:
+        client.table("properties").update({"share_token": None, "share_enabled": False}).eq("id", property_id).execute()
+    except Exception as exc:
+        raise HTTPException(502, "Unable to disable sharing") from exc
+    return {"share_token": None, "share_enabled": False}
 

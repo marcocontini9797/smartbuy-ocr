@@ -285,6 +285,24 @@ documento o un chunk che non è presente nel contesto fornito.
 """
 
 
+REQUEST_LETTER_APPENDIX = """\
+
+Scrivi una lettera o email breve e professionale in italiano, con cui l'agente immobiliare \
+chiede al destinatario indicato i documenti e le informazioni elencate qui sotto. Usa \
+ESCLUSIVAMENTE gli elementi elencati nel messaggio dell'utente: non aggiungere documenti, \
+campi o richieste che non compaiono in quella lista, e non inventare dati sull'immobile \
+oltre a indirizzo e città forniti. Se la lista distingue elementi "essenziali" da \
+"accessori", indica ai primi maggiore urgenza ma senza omettere i secondi. Se compaiono sia \
+documenti del tutto mancanti sia campi mancanti dentro documenti già ricevuti, tratta le due \
+cose separatamente e in modo chiaro, così il destinatario capisce cosa deve ancora fornire \
+da zero e cosa deve invece solo completare o chiarire in un documento già inviato. Includi \
+un oggetto/soggetto se il canale è un'email, un saluto iniziale adeguato al destinatario, un \
+chiusura cordiale, e la firma "L'agente immobiliare" (nessun nome proprio: non è stato \
+fornito). Non scrivere nient'altro oltre al testo della lettera stessa (niente premesse tipo \
+"Ecco la lettera:").
+"""
+
+
 def extraction_system_prompt() -> str:
     return BASE_SYSTEM_PROMPT + EXTRACTION_APPENDIX
 
@@ -295,6 +313,10 @@ def verification_system_prompt() -> str:
 
 def rag_qa_system_prompt() -> str:
     return BASE_SYSTEM_PROMPT + RAG_QA_APPENDIX
+
+
+def request_letter_system_prompt() -> str:
+    return BASE_SYSTEM_PROMPT + REQUEST_LETTER_APPENDIX
 
 
 def due_diligence_scan_system_prompt() -> str:

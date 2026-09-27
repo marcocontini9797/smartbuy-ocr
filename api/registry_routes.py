@@ -28,6 +28,8 @@ APE_LOOKUP_URL = ("https://energia.regione.emilia-romagna.it/riqualificazione-ed
                   "certificazioneenergetica/visura-ape-ricerca-di-un-attestato-di-prestazione-energetica-ape")
 PLANIMETRIA_DELEGA_URL = ("https://www.agenziaentrate.gov.it/portale/documents/20143/4490418/"
                           "Modulo_delega_accesso_telematico_planimetrie_agenti_immobiliari.pdf")
+OPENAPI_DELEGA_URL = "https://docs.openapi.it/docuengine/delega_catasto.pdf"
+CONSULTAZIONE_PERSONALE_URL = "https://www.agenziaentrate.gov.it/portale/consultazione-personale"
 
 
 class Unit(BaseModel):
@@ -123,7 +125,7 @@ def _save_document(client, *, property_id: int, document_type: str, file_name: s
 
 @router.get("/properties/{property_id}/registry")
 def registry_status(property_id: int, client=Depends(user_client)):
-    get_property(property_id, client)
+    record = get_property(property_id, client)
     checks = _checks(client, property_id)
     if openapi_catasto.configured():
         for check in checks:
@@ -133,7 +135,58 @@ def registry_status(property_id: int, client=Depends(user_client)):
     return {"configured": openapi_catasto.configured(), "environment": openapi_catasto.environment(),
             "prices_eur": registry.PRICES_EUR, "checks": checks, "source": registry.SOURCE,
             "ape_lookup_url": APE_LOOKUP_URL, "planimetria_delega_url": PLANIMETRIA_DELEGA_URL,
+            "openapi_delega_url": OPENAPI_DELEGA_URL, "consultazione_personale_url": CONSULTAZIONE_PERSONALE_URL,
+            "delega_confirmed_at": record.get("delega_confirmed_at"),
+            "planimetria_delega_sent_at": record.get("planimetria_delega_sent_at"),
             "spent_eur": round(sum(float(c.get("cost_eur") or 0) for c in checks if c["status"] == "done"), 2)}
+
+
+class DelegaConfirmation(BaseModel):
+    confirmed: bool
+
+
+@router.post("/properties/{property_id}/registry/delega")
+def confirm_delega(property_id: int, payload: DelegaConfirmation, client=Depends(user_client)):
+    """Agent's statement that they hold a delega/incarico from the owner to request these data.
+
+    This does not itself grant any legal right: it only unlocks the flow in
+    the app, and the actual signed delega (see the PDF modules) must exist.
+    """
+    get_property(property_id, client)
+    value = _now() if payload.confirmed else None
+    try:
+        response = client.table("properties").update({"delega_confirmed_at": value}).eq("id", property_id).execute()
+    except Exception as exc:
+        raise HTTPException(502, "Unable to update the delega") from exc
+    return {"delega_confirmed_at": (response.data or [{}])[0].get("delega_confirmed_at")}
+
+
+class PlanimetriaDelegaTracking(BaseModel):
+    sent: bool
+
+
+@router.post("/properties/{property_id}/registry/planimetria-delega")
+def track_planimetria_delega(property_id: int, payload: PlanimetriaDelegaTracking, client=Depends(user_client)):
+    """Agent's note that the signed Mod. 12T-AgIm was sent to Agenzia delle Entrate.
+
+    Purely informational reminder of the 30-day submission deadline from the
+    owner's signature; unlike delega_confirmed_at it gates nothing, since the
+    planimetria itself never flows through this app's API.
+    """
+    get_property(property_id, client)
+    value = _now() if payload.sent else None
+    try:
+        response = client.table("properties").update({"planimetria_delega_sent_at": value}).eq("id", property_id).execute()
+    except Exception as exc:
+        raise HTTPException(502, "Unable to update the planimetria delega tracking") from exc
+    return {"planimetria_delega_sent_at": (response.data or [{}])[0].get("planimetria_delega_sent_at")}
+
+
+def _require_delega(client, property_id: int) -> None:
+    record = get_property(property_id, client)
+    if not record.get("delega_confirmed_at"):
+        raise HTTPException(409, "Conferma prima di avere la delega o l'incarico del proprietario per richiedere questi dati "
+                                 "(sezione Deleghe).")
 
 
 def _require_confirmation(kind: str, payload: Purchase) -> float:
@@ -150,6 +203,7 @@ def find_units(property_id: int, payload: Purchase, client=Depends(user_client))
     done = next((c for c in _checks(client, property_id) if c["kind"] == "immobili" and c["status"] == "done"), None)
     if done:
         return done
+    _require_delega(client, property_id)
     price = _require_confirmation("immobili", payload)
     catasto = _client()
     street, number = registry.split_address(record.get("address") or "")
@@ -178,6 +232,7 @@ def owners(property_id: int, payload: Purchase, client=Depends(user_client)):
                  and _same_unit(c, payload.unit)), None)
     if done:
         return done
+    _require_delega(client, property_id)
     price = _require_confirmation("prospetto", payload)
     catasto = _client()
     unit = payload.unit
@@ -220,6 +275,7 @@ def official_visura(property_id: int, payload: Purchase, client=Depends(user_cli
                  and _same_unit(c, payload.unit)), None)
     if done:
         return done
+    _require_delega(client, property_id)
     price = _require_confirmation("visura_pdf", payload)
     catasto = _client()
     row = {"property_id": property_id, "kind": "visura_pdf", "environment": catasto.environment, "status": "done",
@@ -260,6 +316,7 @@ def mortgage_inspection(property_id: int, payload: Purchase, client=Depends(user
                  and _same_unit(c, payload.unit)), None)
     if done:
         return done
+    _require_delega(client, property_id)
     price = _require_confirmation("ispezione", payload)
     catasto = _client()
     unit = payload.unit

@@ -34,6 +34,8 @@ TYPOLOGIES: dict[str, Typology] = {t.key: t for t in (
              "PRO", "immobili produttivi"),
     Typology("magazzino", "Magazzino o deposito", "commerciale", ("9",), frozenset({"C/2", "C/3", "D/8"}),
              "TCO_DEPOSITI", "magazzini e depositi"),
+    Typology("centro_commerciale", "Centro commerciale", "commerciale", ("17",), frozenset({"D/8"}),
+             "TCO_D08", "fabbricati commerciali"),
 )}
 CONTRACTS = {"vendita": "Vendita", "affitto": "Affitto"}
 DEFAULT_BY_ASSET = {"residenziale": "appartamento", "commerciale": "negozio"}

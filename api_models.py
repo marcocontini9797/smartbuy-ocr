@@ -2,17 +2,13 @@
 SmartBuy API Models v1
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 
 class AgentAskRequest(BaseModel):
 
-    property_id: int
-
-    question: str
-
-    user_id: str | None = None
+    question: str = Field(min_length=1, max_length=1000)
 
 
 

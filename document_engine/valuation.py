@@ -240,10 +240,14 @@ def build_valuation(
         result["methods"].append(comparative)
 
         actual_rent = parse_number(_fact(facts, "canone_mensile_eur"))
+        manual_rent = None if actual_rent else parse_number(property_record.get("canone_mensile_eur"))
         yields = yield_stats or FALLBACK_RETAIL_YIELD
         if actual_rent:
             rent = (actual_rent * 12, actual_rent * 12, actual_rent * 12)
             rent_text = f"canone del contratto in essere {_euro(actual_rent)} €/mese"
+        elif manual_rent:
+            rent = (manual_rent * 12, manual_rent * 12, manual_rent * 12)
+            rent_text = f"canone indicato in scheda {_euro(manual_rent)} €/mese"
         elif quote.get("loc_min") and quote.get("loc_max"):
             rent = (quote["loc_min"] * surface * 12, _mid(quote, "loc_min", "loc_max") * surface * 12, quote["loc_max"] * surface * 12)
             rent_text = f"canone di mercato OMI della zona {quote['loc_min']:g}–{quote['loc_max']:g} €/m² al mese".replace(".", ",")

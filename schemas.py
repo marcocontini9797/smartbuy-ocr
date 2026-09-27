@@ -47,6 +47,9 @@ class TipoDocumento(str, Enum):
     PRELIMINARE_COMPRAVENDITA = "preliminare_compravendita"
     RELAZIONE_TECNICA_INTEGRATA = "relazione_tecnica_integrata"
     PERIZIA_DI_STIMA = "perizia_di_stima"
+    LICENZA_COMMERCIALE = "scia_licenza_commerciale"
+    CERTIFICATO_PREVENZIONE_INCENDI = "certificato_prevenzione_incendi"
+    VISURA_CAMERALE = "visura_camerale"
     ALTRO = "altro"
 
 
@@ -443,6 +446,73 @@ class DichiarazioneConformitaImpianti(BaseModel):
     note_incertezza: list[str] = Field(default_factory=list)
 
 
+class LicenzaCommerciale(BaseModel):
+    """SCIA o licenza per l'esercizio di un'attività commerciale nel locale
+    (distinta dalla SCIA edilizia, che riguarda lavori: vedi TitoloEdilizio).
+    Conferma che l'attività effettivamente svolta è autorizzata: un'attività
+    diversa da quella dichiarata, o l'assenza del titolo, espone il nuovo
+    gestore a sanzioni o alla sospensione dell'attività."""
+
+    CAMPI_ESSENZIALI: ClassVar[frozenset[str]] = frozenset({"attivita_dichiarata", "riferimenti_catastali"})
+
+    tipo_documento: TipoDocumento = TipoDocumento.LICENZA_COMMERCIALE
+    tipo_titolo: Optional[str] = Field(default=None, description="SCIA, licenza, autorizzazione")
+    attivita_dichiarata: Optional[str] = Field(
+        default=None, description="es. 'commercio al dettaglio di abbigliamento', 'somministrazione alimenti e bevande'"
+    )
+    codice_ateco: Optional[str] = None
+    comune_sportello: Optional[str] = Field(default=None, description="Comune o SUAP presso cui è stata presentata")
+    data_presentazione_o_rilascio: Optional[str] = None
+    intestatario: Optional[str] = None
+    riferimenti_catastali: list[RiferimentoCatastale] = Field(default_factory=list)
+    note_incertezza: list[str] = Field(default_factory=list)
+
+
+class CertificatoPrevenzioneIncendi(BaseModel):
+    """CPI (o SCIA antincendio) rilasciato dai Vigili del Fuoco per le
+    attività soggette al DPR 151/2011: rilevante per capannoni, magazzini e
+    centri commerciali sopra certe soglie di superficie o affollamento. Ha
+    validità periodica: se scaduto, l'attività non può proseguire
+    legalmente finché non viene rinnovato."""
+
+    CAMPI_ESSENZIALI: ClassVar[frozenset[str]] = frozenset({"data_scadenza", "riferimenti_catastali"})
+
+    tipo_documento: TipoDocumento = TipoDocumento.CERTIFICATO_PREVENZIONE_INCENDI
+    numero_pratica_vvf: Optional[str] = None
+    categoria_rischio: Optional[str] = Field(default=None, description="A, B o C ai sensi del DPR 151/2011")
+    attivita_soggetta: Optional[str] = Field(default=None, description="es. 'attività 70 - depositi con superficie superiore a...'")
+    data_rilascio: Optional[str] = None
+    data_scadenza: Optional[str] = None
+    comune: Optional[str] = None
+    riferimenti_catastali: list[RiferimentoCatastale] = Field(default_factory=list)
+    note_incertezza: list[str] = Field(default_factory=list)
+
+
+class VisuraCamerale(BaseModel):
+    """Visura del Registro Imprese: identifica la società venditrice, la sua
+    forma giuridica, lo stato dell'attività e chi ha i poteri di firma per
+    impegnarla nell'atto. Una società non attiva (cessata, in liquidazione o
+    sottoposta a procedura concorsuale) o un firmatario senza poteri
+    sufficienti possono rendere nullo o annullabile l'atto."""
+
+    CAMPI_ESSENZIALI: ClassVar[frozenset[str]] = frozenset({"stato_attivita", "ragione_sociale"})
+
+    tipo_documento: TipoDocumento = TipoDocumento.VISURA_CAMERALE
+    ragione_sociale: Optional[str] = None
+    forma_giuridica: Optional[str] = Field(default=None, description="es. S.r.l., S.p.A., S.n.c.")
+    partita_iva: Optional[str] = None
+    sede_legale: Optional[str] = None
+    stato_attivita: Optional[str] = Field(
+        default=None, description="es. attiva, cessata, in liquidazione, fallimento, concordato preventivo"
+    )
+    data_iscrizione: Optional[str] = None
+    data_visura: Optional[str] = Field(default=None, description="Data di generazione della visura, per capirne l'aggiornamento")
+    rappresentanti_legali: list[str] = Field(
+        default_factory=list, description="Nomi e poteri di firma, es. 'Mario Rossi - amministratore unico, firma singola'"
+    )
+    note_incertezza: list[str] = Field(default_factory=list)
+
+
 class AttoDiProvenienza(BaseModel):
     """Il titolo con cui l'attuale venditore ha acquisito l'immobile (non
     l'atto di vendita corrente, ma quello precedente). Il tipo di provenienza
@@ -659,6 +729,9 @@ SCHEMA_REGISTRY: dict[TipoDocumento, type[BaseModel]] = {
     TipoDocumento.PRELIMINARE_COMPRAVENDITA: PreliminareCompravendita,
     TipoDocumento.RELAZIONE_TECNICA_INTEGRATA: RelazioneTecnicaIntegrata,
     TipoDocumento.PERIZIA_DI_STIMA: PeriziaDiStima,
+    TipoDocumento.LICENZA_COMMERCIALE: LicenzaCommerciale,
+    TipoDocumento.CERTIFICATO_PREVENZIONE_INCENDI: CertificatoPrevenzioneIncendi,
+    TipoDocumento.VISURA_CAMERALE: VisuraCamerale,
 }
 
 
