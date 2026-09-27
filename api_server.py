@@ -8,17 +8,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 import os
-import base64
-import httpx
+import asyncio
+import re
 import traceback
 
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from io import BytesIO
 
 from dotenv import load_dotenv
-from pdf2image import convert_from_bytes
 
 load_dotenv()
 
@@ -100,7 +98,7 @@ async def ingest_document(
             )
 
 
-        content = await file.read()
+        content = await file.read(MAX_FILE_SIZE + 1)
 
         file_size = len(content)
 
@@ -115,11 +113,11 @@ async def ingest_document(
         # STEP 2 - OCR Vision
         # ==============================
 
-        ocr_text = await _ocr_with_openai(
-            content,
-            file_ext
-        )
-
+        from document_engine.document_reader import read_document
+        reading = await read_document(content, file_ext)
+        ocr_text = reading.full_text
+        if len(ocr_text) > 180_000:
+            raise ValueError("Documento troppo esteso per un’analisi completa: dividilo in più file.")
 
         # ==============================
         # STEP 3 - Classificazione
@@ -146,7 +144,7 @@ async def ingest_document(
                 CRITICAL_EXTRACTION_FIELDS, extraction_disagreements as compare_readings,
             )
 
-            first_reading = extract_document(ocr_text, doc_type)
+            first_reading = await asyncio.to_thread(extract_document, ocr_text, doc_type)
             first_fields = first_reading.model_dump(mode="json", exclude_none=True)
             needs_second = bool(CRITICAL_EXTRACTION_FIELDS & {
                 key for key, value in first_fields.items() if value not in (None, "", [], {})
@@ -156,9 +154,10 @@ async def ingest_document(
             with ThreadPoolExecutor(max_workers=2) as pool:
                 verification_job = pool.submit(verify_extraction, ocr_text, first_reading)
                 second_job = pool.submit(extract_document, ocr_text, doc_type) if needs_second else None
-                verification = verification_job.result()
+                verification = await asyncio.to_thread(verification_job.result)
                 try:
-                    second_reading = second_job.result().model_dump(mode="json", exclude_none=True) if second_job else None
+                    second_result = await asyncio.to_thread(second_job.result) if second_job else None
+                    second_reading = second_result.model_dump(mode="json", exclude_none=True) if second_result else None
                 except Exception:
                     traceback.print_exc()
                     second_reading = None
@@ -175,8 +174,10 @@ async def ingest_document(
                 if key not in {"tipo_documento", "note_incertezza"}
                 and value not in (None, "", [], {})
             ]
+            if not filled:
+                raise ValueError("Nessun dato estraibile dal documento")
             unsupported = {
-                item.campo.split(".")[0]
+                re.split(r"[.\[]", item.campo)[0]
                 for item in verification.campi_non_supportati
             }
             extraction_confidence = round(
@@ -186,6 +187,8 @@ async def ingest_document(
 
             # If the two readings contradict each other on a critical field,
             # the field is flagged for review.
+            if needs_second and second_reading is None:
+                extraction_confidence = min(extraction_confidence, 0.5)
             if second_reading:
                 extraction_disagreements = compare_readings(extracted_data, second_reading)
                 if extraction_disagreements:
@@ -204,8 +207,7 @@ async def ingest_document(
                 "======================================"
             )
 
-            extracted_data = None
-            extraction_confidence = 0.0
+            return JSONResponse({"status":"error", "error":"Estrazione o verifica dei dati non completata. Riprova: nessun risultato parziale è stato salvato."}, status_code=502)
         # ==============================
         # STEP 5 - Red flags
         # ==============================
@@ -301,6 +303,9 @@ async def ingest_document(
 
             "extracted_fields": extracted_data,
             "extraction_disagreements": extraction_disagreements,
+            "ocr_metadata": reading.metadata(),
+            "verification": verification.model_dump(mode="json"),
+            "second_reading_status": "completed" if second_reading is not None else "failed" if needs_second else "not_required",
 
             "red_flags": red_flags_list,
 
@@ -378,343 +383,22 @@ async def ingest_document(
 # ==================================================
 
 
-async def _ocr_with_openai(
-    file_bytes: bytes,
-    file_ext: str
-) -> str:
+async def _ocr_with_openai(file_bytes: bytes, file_ext: str) -> str:
+    from document_engine.document_reader import read_document
+    return (await read_document(file_bytes, file_ext)).full_text
 
-
-    """
-    OCR tramite OpenAI Vision.
-    I PDF vengono convertiti prima in immagini.
-    """
-
-
-    # PDF -> PNG
-
-    if file_ext.lower() == ".pdf":
-
-
-        images = convert_from_bytes(
-
-            file_bytes,
-
-            first_page=1,
-
-            last_page=1,
-
-            poppler_path=
-                r"C:\poppler\poppler-26.09.0\Library\bin"
-
-        )
-
-
-        buffer = BytesIO()
-
-
-        images[0].save(
-            buffer,
-            format="PNG"
-        )
-
-
-        image_bytes = buffer.getvalue()
-
-
-        b64_content = base64.b64encode(
-            image_bytes
-        ).decode("utf-8")
-
-
-        media_type = "image/png"
-
-
-
-    else:
-
-
-        b64_content = base64.b64encode(
-            file_bytes
-        ).decode("utf-8")
-
-
-        if file_ext.lower() in [
-            ".jpg",
-            ".jpeg"
-        ]:
-
-            media_type = "image/jpeg"
-
-
-        else:
-
-            media_type = "image/png"
-
-
-
-    async with httpx.AsyncClient(
-        timeout=120.0
-    ) as client:
-
-
-        response = await client.post(
-
-
-            "https://api.openai.com/v1/chat/completions",
-
-
-            headers={
-
-                "Authorization":
-                    f"Bearer {OPENAI_API_KEY}",
-
-                "Content-Type":
-                    "application/json"
-
-            },
-
-
-            json={
-
-                "model":
-                    "gpt-4o",
-
-
-                "max_tokens":
-                    4096,
-
-
-                "messages":[
-
-                    {
-
-                        "role":
-                            "user",
-
-
-                        "content":[
-
-
-                            {
-
-                                "type":
-                                    "text",
-
-                                "text":
-                                    (
-                                    "Estrai tutto il testo "
-                                    "presente nel documento immobiliare. "
-                                    "Mantieni numeri catastali, "
-                                    "date, intestazioni e valori "
-                                    "esattamente come appaiono."
-                                    )
-
-                            },
-
-
-                            {
-
-                                "type":
-                                    "image_url",
-
-
-                                "image_url":{
-
-                                    "url":
-                                    (
-                                    f"data:{media_type};"
-                                    f"base64,{b64_content}"
-                                    )
-
-                                }
-
-                            }
-
-
-                        ]
-
-                    }
-
-                ]
-
-            }
-
-        )
-
-
-    if response.status_code != 200:
-
-        raise Exception(
-
-            f"OpenAI API error: "
-            f"{response.status_code} - "
-            f"{response.text}"
-
-        )
-
-
-    result = response.json()
-
-
-    return (
-        result["choices"][0]
-        ["message"]["content"]
-    )
 # ==================================================
 # DOCUMENT TYPE CLASSIFICATION
 # ==================================================
 
 
-async def _classify_document_type_via_openai(
-    text: str
-) -> Optional[TipoDocumento]:
-
-    """
-    Classifica il tipo di documento immobiliare.
-    Ritorna TipoDocumento oppure None.
-    """
-
-
-    doc_types = [
-        td.value
-        for td in TipoDocumento
-    ]
-
-
-
-    async with httpx.AsyncClient(
-        timeout=30.0
-    ) as client:
-
-
-        response = await client.post(
-
-
-            "https://api.openai.com/v1/chat/completions",
-
-
-            headers={
-
-                "Authorization":
-                    f"Bearer {OPENAI_API_KEY}",
-
-                "Content-Type":
-                    "application/json"
-
-            },
-
-
-            json={
-
-                "model":
-                    "gpt-4o",
-
-
-                "max_tokens":
-                    50,
-
-
-                "messages":[
-
-
-                    {
-
-                        "role":
-                            "system",
-
-
-                        "content":
-                            (
-                            "Sei un esperto classificatore "
-                            "di documenti immobiliari italiani. "
-
-                            "Classifica il documento in una "
-                            "di queste categorie:\n"
-
-                            f"{', '.join(doc_types)}\n\n"
-
-                            "Rispondi SOLO con il nome "
-                            "della categoria."
-                            )
-
-                    },
-
-
-                    {
-
-                        "role":
-                            "user",
-
-
-                        "content":
-                            (
-                            "Classifica questo documento:\n\n"
-                            f"{text[:2000]}"
-                            )
-
-                    }
-
-                ]
-
-            }
-
-        )
-
-
-
-    if response.status_code != 200:
-
-        return None
-
-
-
-    result = response.json()
-
-
-    classification = (
-        result["choices"][0]
-        ["message"]["content"]
-        .strip()
-        .lower()
-    )
-
-
-
-    for td in TipoDocumento:
-
-        if td.value.lower() in classification:
-
-            return td
-
-
-
-    return None
-
-
-
-
-
-# ==================================================
-# START SERVER
-# ==================================================
+async def _classify_document_type_via_openai(text: str) -> Optional[TipoDocumento]:
+    # The full multipage transcription is classified with a validated schema.
+    from extraction import classify_document_type
+    result = await asyncio.to_thread(classify_document_type, text)
+    return result.tipo_documento
 
 
 if __name__ == "__main__":
-
     import uvicorn
-
-
-    uvicorn.run(
-
-        app,
-
-        host="0.0.0.0",
-
-        port=int(
-            os.getenv(
-                "PORT",
-                8000
-            )
-        )
-
-    )
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8000")))

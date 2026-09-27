@@ -27,6 +27,7 @@ dove vale la pena pagare qualche chiamata in più.
 from __future__ import annotations
 
 from collections import Counter
+import re
 from typing import Optional
 
 from pydantic import BaseModel
@@ -87,7 +88,7 @@ def _apply_verification_penalty(extracted: BaseModel, verification: Verification
     silenziosamente: consistency.py e il missing-info detection continuano a
     lavorare sullo stesso oggetto Pydantic, solo con dati di incertezza più accurati.
     """
-    if verification.tutti_i_campi_supportati:
+    if verification.tutti_i_campi_supportati and not verification.campi_non_supportati:
         return extracted
 
     data = extracted.model_dump()
@@ -97,12 +98,36 @@ def _apply_verification_penalty(extracted: BaseModel, verification: Verification
             f"[verifica] campo '{campo_ns.campo}' non supportato dal testo "
             f"({campo_ns.gravita}): {campo_ns.motivo}"
         )
-        # Se il campo penalizzato è un CampoEstratto di primo livello, ne
-        # abbassiamo direttamente la confidence.
-        top_level_name = campo_ns.campo.split(".")[0]
-        val = data.get(top_level_name)
-        if isinstance(val, dict) and "confidence" in val:
-            val["confidence"] = min(val.get("confidence") or 0.0, 0.2)
+        # Follow nested object/list paths, including parties[0].field.
+        parts = [p for p in re.split(r"[.\[\]]+", campo_ns.campo) if p]
+        target = data
+        ancestors = []
+        for part in parts:
+            ancestors.append(target)
+            if isinstance(target, dict):
+                target = target.get(part)
+            elif isinstance(target, list) and part.isdigit() and int(part) < len(target):
+                target = target[int(part)]
+            else:
+                target = None
+                break
+        def penalize(value):
+            if isinstance(value, dict):
+                if "confidence" in value:
+                    value["confidence"] = min(value.get("confidence") or 0.0, 0.2)
+                for child in value.values():
+                    if isinstance(child, (dict,list)):
+                        penalize(child)
+            elif isinstance(value,list):
+                for child in value:
+                    penalize(child)
+        if isinstance(target,(dict,list)):
+            penalize(target)
+        else:
+            for parent in reversed(ancestors):
+                if isinstance(parent,dict) and "confidence" in parent:
+                    penalize(parent)
+                    break
 
     if "note_incertezza" in data:
         data["note_incertezza"] = list(data.get("note_incertezza") or []) + note_extra

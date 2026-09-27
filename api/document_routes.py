@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from api.property_routes import get_property
 from api.session import user_client
-from document_engine.ingestion import validate_file
+from document_engine.ingestion import validate_file, MAX_FILE_SIZE
 from core.operational_models import IntakeRecord, OperationalEvidence, PipelineRun, PipelineStage, SourceMode, now_iso, stable_id
 
 
@@ -51,7 +51,7 @@ def _field_value(value):
 
 def persist_document_facts(client, *, property_id: int, document: dict, analysis: dict,
                            extracted_fields: dict | None, default_confidence: float | None,
-                           model_name: str | None, second_reading: dict | None = None) -> int:
+                           model_name: str | None, second_reading: dict | None = None, unsupported_fields: set[str] | None = None) -> int:
     """Store each extracted field as a property fact with its provenance.
 
     Provenance ids are generated here so each fact is linked to its own row
@@ -67,6 +67,8 @@ def persist_document_facts(client, *, property_id: int, document: dict, analysis
         if name in _NON_FACT_FIELDS or value in (None, "", [], {}):
             continue
         confidence = confidence if confidence is not None else default_confidence
+        if name in (unsupported_fields or set()):
+            confidence = min(confidence if confidence is not None else 0.2, 0.2)
         if is_second:
             citation = "Seconda lettura indipendente: valore diverso dalla prima"
             confidence = round((confidence or 0.5) * 0.5, 3)
@@ -152,7 +154,7 @@ async def analyze_property_document(
     document result and ``document_analyses`` creates the property lineage.
     """
     get_property(property_id, client)
-    content = await file.read()
+    content = await file.read(MAX_FILE_SIZE + 1)
     try:
         validate_file(file.filename or "", content)
     except ValueError as exc:
@@ -171,7 +173,7 @@ async def analyze_property_document(
 
     run = PipelineRun(
         property_id=property_id,
-        component_versions={"intake": "1.0", "ocr": "1.0", "extraction": "1.0", "cross_validation": "1.0"},
+        component_versions={"intake": "1.0", "ocr": "2.0", "extraction": "2.0", "cross_validation": "1.0"},
     )
     _best_effort_insert(client, "smartbuy_analysis_runs", run.model_dump(mode="json"))
     _best_effort_insert(client, "smartbuy_run_stages", PipelineStage.completed(
@@ -193,6 +195,10 @@ async def analyze_property_document(
         agente_id=client.smartbuy_user_id,
     )
     if getattr(result, "status_code", 500) >= 400:
+        run.status = "failed"
+        run.completed_at = now_iso()
+        run.error = "Document reading or extraction failed"
+        _best_effort_insert(client, "smartbuy_analysis_runs", run.model_dump(mode="json"))
         try:
             detail = json.loads(result.body).get("error", "Document analysis failed")
         except Exception:
@@ -203,6 +209,10 @@ async def analyze_property_document(
 
     payload = json.loads(result.body)
     if payload.get("document_type") in (None, "", "altro") and not payload.get("extracted_fields"):
+        run.status = "failed"
+        run.completed_at = now_iso()
+        run.error = "Unsupported document"
+        _best_effort_insert(client, "smartbuy_analysis_runs", run.model_dump(mode="json"))
         raise HTTPException(422, "Il file non sembra un documento immobiliare riconosciuto (visura, APE, atto, planimetria…). Non è stato salvato.")
     now = datetime.now(timezone.utc).isoformat()
     document = _insert_one(client, "documents", {
@@ -249,11 +259,13 @@ async def analyze_property_document(
         extracted_fields=payload.get("extracted_fields"),
         default_confidence=payload.get("extraction_confidence"), model_name=extraction_model,
         second_reading=payload.get("extraction_disagreements"),
+        unsupported_fields={re.split(r"[.\[]", item["campo"])[0] for item in (payload.get("verification") or {}).get("campi_non_supportati", [])},
     )
     _best_effort_insert(client, "smartbuy_analysis_runs", run.model_dump(mode="json"))
     for name in ("ocr", "classification", "extraction"):
         _best_effort_insert(client, "smartbuy_run_stages", PipelineStage.completed(
             run.run_id, name, input_refs=[str(document["id"])], output_refs=[str(analysis["id"])],
+            metadata=payload.get("ocr_metadata", {}) if name == "ocr" else {"verification": payload.get("verification"), "second_reading_status": payload.get("second_reading_status")} if name == "extraction" else {},
         ).model_dump(mode="json"))
     evidence = OperationalEvidence(
         evidence_id=stable_id("evidence", property_id, document["id"], analysis["id"]),

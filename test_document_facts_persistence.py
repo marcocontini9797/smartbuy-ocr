@@ -66,3 +66,9 @@ def test_contradicting_second_reading_becomes_a_second_fact_of_the_same_document
     from document_engine.cross_validation import cross_validate
     findings = cross_validate(16, facts=client.store["property_facts"])
     assert [f.status for f in findings if f.field == "proprietari"] == ["extraction_unstable"]
+
+def test_unsupported_plain_field_is_not_persisted_with_high_confidence():
+    client=FakeClient()
+    persist_document_facts(client, property_id=1, document={"id":1}, analysis={"id":"a"},
+                           extracted_fields={"owner":"Example"},default_confidence=.95,model_name="test",unsupported_fields={"owner"})
+    assert client.store["property_facts"][0]["confidence_score"] == .2
