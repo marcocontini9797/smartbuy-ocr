@@ -37,7 +37,7 @@ from .metadata import (
 # CONFIG
 # ==================================================
 
-MAX_FILE_SIZE = 25 * 1024 * 1024
+MAX_FILE_SIZE = 20_000_000
 
 
 SUPPORTED_EXTENSIONS = {
@@ -136,7 +136,7 @@ def validate_file(
 
         raise ValueError(
             "File troppo grande. "
-            "Massimo consentito 25 MB"
+            "Massimo consentito 20 MB"
         )
 
 

@@ -28,6 +28,7 @@ from red_flags import run_all_red_flags
 from consistency import run_all_checks
 from fascicolo import Fascicolo
 from schemas import TipoDocumento
+from document_engine.ingestion import MAX_FILE_SIZE
 
 
 app = FastAPI(
@@ -104,7 +105,7 @@ async def ingest_document(
         file_size = len(content)
 
 
-        if file_size > 20_000_000:
+        if file_size > MAX_FILE_SIZE:
             raise ValueError(
                 "File too large (max 20MB)"
             )

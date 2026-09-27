@@ -15,76 +15,81 @@ from document_engine.ocr import (
 )
 
 
-FILE = (
-    r"C:\Users\Marco\smartbuy-casa-diretta"
-    r"\due_diligence_brain\document_analysis"
-    r"\visura_demo.pdf"
-)
+
+def main():
+    FILE = (
+        r"C:\Users\Marco\smartbuy-casa-diretta"
+        r"\due_diligence_brain\document_analysis"
+        r"\visura_demo.pdf"
+    )
 
 
 
-# ==============================
-# LOAD FILE
-# ==============================
+    # ==============================
+    # LOAD FILE
+    # ==============================
 
-with open(FILE, "rb") as f:
-    content = f.read()
-
-
-
-print("\n========== INGEST ==========")
+    with open(FILE, "rb") as f:
+        content = f.read()
 
 
 
-document = ingest_document(
-
-    filename="visura_demo.pdf",
-
-    content=content
-
-)
+    print("\n========== INGEST ==========")
 
 
 
-print(document.metadata)
+    document = ingest_document(
 
+        filename="visura_demo.pdf",
 
-
-print("\n========== OCR ==========")
-
-
-
-ocr_result = asyncio.run(
-
-    run_ocr(
-
-        content,
-
-        ".pdf"
+        content=content
 
     )
 
-)
+
+
+    print(document.metadata)
 
 
 
-print(
-    "Pagine:",
-    len(ocr_result.pages)
-)
+    print("\n========== OCR ==========")
 
 
-print(
-    "Confidence OCR:",
-    ocr_result.confidence
-)
+
+    ocr_result = asyncio.run(
+
+        run_ocr(
+
+            content,
+
+            ".pdf"
+
+        )
+
+    )
 
 
-print(
-    "\nTESTO ESTRATTO:"
-)
+
+    print(
+        "Pagine:",
+        len(ocr_result.pages)
+    )
 
 
-print(
-    ocr_result.full_text[:3000]
-)
+    print(
+        "Confidence OCR:",
+        ocr_result.confidence
+    )
+
+
+    print(
+        "\nTESTO ESTRATTO:"
+    )
+
+
+    print(
+        ocr_result.full_text[:3000]
+    )
+
+if __name__ == "__main__":
+    main()

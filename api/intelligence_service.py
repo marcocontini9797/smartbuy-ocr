@@ -2,17 +2,11 @@
 
 from __future__ import annotations
 
-import sys
 import json
 from hashlib import sha256
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
-
-REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
-if str(REPOSITORY_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from smartbuy.document_facts_loader import load_document_facts_into_profile
 from smartbuy.profile import PropertyIntelligenceProfile
