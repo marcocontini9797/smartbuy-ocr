@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from document_engine.geocoding import geocode
+from document_engine.proximity import nearby_amenities
 from document_engine.territory import build_territory
 from document_engine.typology import TYPOLOGIES, typology_of
 from document_engine.valuation import _STATE_BY_CONDITION, _quote, build_valuation
@@ -100,6 +101,14 @@ def territory_snapshot(client, zone: dict[str, Any] | None) -> dict[str, Any] | 
                            point=None, incomes=incomes, postcode=None)
 
 
+def proximity_snapshot(lat: float, lon: float) -> dict[str, Any] | None:
+    """Distance to school/pharmacy/supermarket/transit/park, via OpenStreetMap
+    (document_engine/proximity.py) — a location factor OMI zone quotations
+    don't capture on their own. None if every Overpass mirror is unreachable;
+    never blocks the rest of the estimate."""
+    return nearby_amenities(lat, lon)
+
+
 def full_estimate(*, city: str | None, typology_key: str | None, contract: str | None,
                   condition: str | None, floor: int | None, elevator: bool | None,
                   surface_m2: float | None, zone: dict[str, Any] | None) -> dict[str, Any]:
@@ -154,7 +163,7 @@ def complexity_factors(answers: dict[str, Any]) -> dict[str, Any]:
 
 
 def compose_seller_report(*, answers: dict[str, Any], estimate: dict[str, Any],
-                          complexity: dict[str, Any]) -> str:
+                          complexity: dict[str, Any], proximity: dict[str, Any] | None = None) -> str:
     """AI narrative, strictly grounded in the structured facts already
     computed above — same pattern as document_engine/request_composer.py:
     the model phrases what we already know, it does not decide what to say."""
@@ -165,6 +174,10 @@ def compose_seller_report(*, answers: dict[str, Any], estimate: dict[str, Any],
         lines.append(f"Stima di mercato: {method['low']:,}–{method['high']:,} EUR ({method.get('explanation', '')})".replace(",", "."))
     else:
         lines.append(f"Stima di mercato non disponibile: {estimate.get('reason', 'dati insufficienti')}")
+    if proximity:
+        nearby = [f"{label} a {info['distance_m']} m" for label, info in proximity.items() if info]
+        if nearby:
+            lines.append("Servizi nelle vicinanze: " + ", ".join(nearby))
     lines.append(f"Prontezza documentale: {complexity['readiness_score']}/{complexity['readiness_max']} documenti chiave già pronti")
     present_factors = [f["label"] for f in complexity["factors"] if f["present"]]
     lines.append("Complessità rilevate: " + (", ".join(present_factors) if present_factors else "nessuna delle situazioni verificate"))
