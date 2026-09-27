@@ -9,11 +9,14 @@ behaviour, same MODEL/LIGHT_MODEL env-var configuration.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 from llm_client import MODEL, structured_call
+
+_CITATION_RE = re.compile(r"\(fonte:\s*([^,()]+?)(?:,\s*pag\.\s*(\d+))?\)")
 
 SYSTEM_PROMPT = """Rispondi a domande di due diligence immobiliare su UN SOLO fascicolo, usando \
 ESCLUSIVAMENTE i fatti, i rischi e i brani di documento (evidence) forniti nel messaggio dell'utente.
@@ -40,10 +43,36 @@ class _AgentLLMOutput(BaseModel):
 
 
 class _Response:
-    def __init__(self, answer: str, confidence: float, grounded: bool):
+    def __init__(self, answer: str, confidence: float, grounded: bool, sources: list[dict[str, Any]] | None = None):
         self.answer = answer
         self.confidence = confidence
         self.metadata = {"grounded": grounded}
+        self.sources = sources or []
+
+
+def _cited_sources(answer: str, evidence: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Sources the answer actually cites — via its "(fonte: X, pag. Y)"
+    markers — in citation order, deduped. Distinct from `evidence` itself
+    (every passage the LLM was given, whether or not it ended up using it):
+    showing all of those as "sources" would badge the answer with documents
+    it never actually referenced."""
+    by_document: dict[str, dict[str, Any]] = {}
+    for item in evidence:
+        document = item.get("document")
+        if document:
+            by_document.setdefault(str(document).strip(), item)
+    seen: set[tuple[str, Any]] = set()
+    sources: list[dict[str, Any]] = []
+    for raw_document, raw_page in _CITATION_RE.findall(answer):
+        document = raw_document.strip()
+        match = by_document.get(document)
+        page = int(raw_page) if raw_page else (match.get("page") if match else None)
+        key = (document, page)
+        if key in seen:
+            continue
+        seen.add(key)
+        sources.append({"document": document, "page": page})
+    return sources
 
 
 class AgentLLMGateway:
@@ -69,4 +98,5 @@ class AgentLLMGateway:
             output_model=_AgentLLMOutput,
             model=MODEL,
         )
-        return _Response(result.answer, result.confidence, result.grounded)
+        sources = _cited_sources(result.answer, context.get("evidence", []))
+        return _Response(result.answer, result.confidence, result.grounded, sources)

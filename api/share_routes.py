@@ -107,7 +107,8 @@ def shared_ask(token: str, payload: SharedAskRequest):
     except Exception as exc:
         raise HTTPException(502, "L'assistente non è riuscito a rispondere: riprova tra poco.") from exc
     return {"answer": response.answer, "confidence": response.confidence,
-            "grounded": response.metadata.get("grounded", True), "sources": context.get("sources", [])}
+            "grounded": response.metadata.get("grounded", True),
+            "sources": getattr(response, "sources", None) or context.get("sources", [])}
 
 
 @router.get("/shared/{token}/documents/{document_id}/file")

@@ -110,13 +110,7 @@ class SmartBuyAgentService:
 
             ),
 
-            sources=context.get(
-
-                "sources",
-
-                []
-
-            ),
+            sources=getattr(response, "sources", None) or context.get("sources", []),
 
             risk_level=context.get(
 
