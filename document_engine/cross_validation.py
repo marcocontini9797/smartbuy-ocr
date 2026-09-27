@@ -476,7 +476,7 @@ def claims_from_documents(documents: Iterable[dict[str, Any]]) -> list[Claim]:
                     canonical, raw, source_key=f"doc:{document_id}",
                     source_label=document.get("file_name") or f"Documento {document_id}",
                     document_type=document.get("document_type"),
-                    confidence=_float(_field_confidence(value) or document.get("extraction_confidence")),
+                    confidence=_float(_field_confidence(value) if _field_confidence(value) is not None else document.get("extraction_confidence")),
                 )
                 if claim:
                     claims.append(claim)
@@ -526,7 +526,7 @@ def _collapse_source(spec: FieldSpec, claims: list[Claim]) -> _SourceValue:
     """One value per source: majority (confidence-weighted) among its extractions."""
     weights: Counter = Counter()
     for claim in claims:
-        weights[_hashable(claim.normalized)] += claim.confidence or 0.5
+        weights[_hashable(claim.normalized)] += max(claim.confidence if claim.confidence is not None else 0.5, 0.001)
     groups: list[list[Any]] = []
     for key in weights:
         for group in groups:
@@ -600,6 +600,16 @@ def _compare_field(property_id: int, spec: FieldSpec, claims: list[Claim]) -> li
             ))
         return findings
 
+    uncertain = [source for source in sources if source.unstable or source.confidence < 0.4]
+    if uncertain:
+        findings.append(_finding(
+            property_id, spec, "attention", claims, severity=spec.severity,
+            confidence=min(source.confidence for source in sources), canonical=None,
+            detail="Il confronto comprende letture incerte o discordanti dello stesso documento. Non è ancora possibile confermare una contraddizione tra le fonti.",
+            action="Rileggere e correggere i dati sulle fonti originali, poi ripetere il confronto",
+        ))
+        return findings
+
     reference = max(sources, key=lambda s: s.confidence)
     verdicts = [(s, *spec.compare(reference.value, s.value)) for s in sources if s is not reference]
     all_claims = [c for s in sources for c in s.claims]
@@ -619,7 +629,7 @@ def _compare_field(property_id: int, spec: FieldSpec, claims: list[Claim]) -> li
         findings.append(_finding(
             property_id, spec, "compatible" if notes else "consistent", all_claims, severity="low",
             confidence=min(0.99, 1 - disbelief), canonical=reference.value,
-            detail=(f"Confermato da {len(sources)} fonti indipendenti." + (" " + " ".join(sorted(set(notes))) if notes else "")),
+            detail=(f"Valori concordanti in {len(sources)} fonti registrate; la concordanza non prova da sola la correttezza del dato." + (" " + " ".join(sorted(set(notes))) if notes else "")),
             action=None,
         ))
     return findings
@@ -654,15 +664,16 @@ def _surface_cross_measure(property_id: int, claims: list[Claim]) -> list[CrossV
 def _validity_checks(property_id: int, facts: Iterable[dict[str, Any]], documents: Iterable[dict[str, Any]],
                      today: date) -> list[CrossValidationFinding]:
     findings: list[CrossValidationFinding] = []
-    texts: list[tuple[str, str, Any]] = []
+    texts: list[tuple[str, str, Any, str]] = []
+    document_types = {str(d.get("id")): str(d.get("document_type") or "") for d in documents}
     for fact in facts:
-        texts.append((f"doc:{fact.get('source_document_id')}", str(fact.get("fact_name")), _unwrap(fact.get("fact_value"))))
+        texts.append((f"doc:{fact.get('source_document_id')}", str(fact.get("fact_name")), _unwrap(fact.get("fact_value")), document_types.get(str(fact.get("source_document_id")), str(fact.get("fact_category") or ""))))
     for document in documents:
         for name, value in (document.get("extracted_fields") or {}).items():
-            texts.append((f"doc:{document.get('id')}", name, _unwrap(value)))
+            texts.append((f"doc:{document.get('id')}", name, _unwrap(value), str(document.get("document_type") or "")))
 
     seen_cf: set[str] = set()
-    for source_key, name, value in texts:
+    for source_key, name, value, document_type in texts:
         for cf in find_codici_fiscali(value):
             if cf in seen_cf:
                 continue
@@ -680,12 +691,12 @@ def _validity_checks(property_id: int, facts: Iterable[dict[str, Any]], document
         parsed = parse_date(value) if isinstance(value, str) else None
         if parsed is None:
             continue
-        if key in {"data_scadenza"} and parsed < today:
+        if document_type in {"ape", "ape_energy_certificate"} and key == "data_scadenza" and parsed < today:
             findings.append(_date_finding(property_id, "ape.scadenza", "Scadenza APE", source_key, value, "invalid", "high",
-                                          f"APE scaduto il {parsed:%d/%m/%Y}.", "Richiedere un nuovo APE prima del rogito"))
-        elif key in {"data_emissione"} and (today - parsed).days > 3652:
+                                          f"APE scaduto il {parsed:%d/%m/%Y}.", "Richiedere al proprietario un APE aggiornato e verificarne l’utilizzo nella pratica"))
+        elif document_type in {"ape", "ape_energy_certificate"} and key == "data_emissione" and (today - parsed).days > 3652:
             findings.append(_date_finding(property_id, "ape.scadenza", "Scadenza APE", source_key, value, "invalid", "high",
-                                          f"APE emesso il {parsed:%d/%m/%Y}: oltre i 10 anni di validità.", "Richiedere un nuovo APE prima del rogito"))
+                                          f"APE emesso il {parsed:%d/%m/%Y}: oltre i 10 anni di validità.", "Richiedere al proprietario un APE aggiornato e verificarne l’utilizzo nella pratica"))
         elif key == "data_visura" and (today - parsed).days > 90:
             findings.append(_date_finding(property_id, "visura.data", "Data visura", source_key, value, "attention", "medium",
                                           f"Visura del {parsed:%d/%m/%Y}, più vecchia di 90 giorni.", "Richiedere una visura aggiornata"))
@@ -705,6 +716,27 @@ _STATUS_ORDER = {"conflict": 0, "invalid": 1, "extraction_unstable": 2, "attenti
 _SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
 
+def _multiunit_sources(property_id, facts, documents):
+    candidates = [(f"doc:{d.get('id')}", name, value) for d in documents for name,value in (d.get("extracted_fields") or {}).items()]
+    candidates += [(f"doc:{f.get('source_document_id')}", str(f.get("fact_name")), _unwrap(f.get("fact_value"))) for f in effective_facts(facts) if f.get("source_document_id") is not None]
+    excluded = {}
+    for source,name,value in candidates:
+        if name not in _RIFERIMENTO_KEYS or not isinstance(value,list):
+            continue
+        identities = {tuple(norm_catasto_id(_unwrap(item.get(k))) if item.get(k) is not None else "" for k in ("foglio","particella","subalterno")) for item in value if isinstance(item,dict)}
+        identities.discard(("","",""))
+        if len(identities)>1:
+            excluded[source]=value
+    findings = [CrossValidationFinding(
+        finding_id=stable_id("cross-validation",property_id,"multiple_units",source), property_id=property_id,
+        field="catasto.unita_multiple",label="Documento con più unità catastali",status="attention",severity="high",confidence=0.0,
+        sources=[source],values=[{"source_key":source,"value":value}],
+        detail="Il documento cita più unità. I suoi dati non sono stati confrontati come se appartenessero a un’unica unità.",
+        recommended_action="Identifica l’unità oggetto della pratica e separa i dati delle eventuali pertinenze prima del confronto.",
+    ) for source,value in excluded.items()]
+    return set(excluded), findings
+
+
 def cross_validate(
     property_id: int,
     facts: Iterable[dict[str, Any]] = (),
@@ -715,15 +747,23 @@ def cross_validate(
 ) -> list[CrossValidationFinding]:
     """Cross-validate every comparable field of a property, most urgent first."""
     facts, documents = list(facts), list(documents)
+    # Persisted field verdicts take precedence over the document's original snapshot,
+    # including rejection: never resurrect the raw value as a second reading.
+    represented = {(str(f.get("source_document_id")), f.get("fact_name")) for f in facts if f.get("source_document_id") is not None}
+    documents = [{**d, "extracted_fields": {k:v for k,v in (d.get("extracted_fields") or {}).items() if (str(d.get("id")), k) not in represented}} for d in documents]
     claims = claims_from_facts(facts, provenance) + claims_from_documents(documents) + claims_from_property(property_record)
+    multiunit, scope_findings = _multiunit_sources(property_id, facts, documents)
+    claims = [c for c in claims if c.source_key not in multiunit]
     by_field: dict[str, list[Claim]] = defaultdict(list)
     for claim in claims:
         by_field[claim.field].append(claim)
     findings: list[CrossValidationFinding] = []
     for key, items in by_field.items():
         findings += _compare_field(property_id, SPECS[key], items)
+    findings += scope_findings
     findings += _surface_cross_measure(property_id, claims)
-    findings += _validity_checks(property_id, facts, documents, today or date.today())
+    validity = _validity_checks(property_id, effective_facts(facts), documents, today or date.today())
+    findings += list({f.finding_id: f for f in validity}.values())
     findings.sort(key=lambda f: (_STATUS_ORDER.get(f.status, 9), _SEVERITY_ORDER.get(f.severity, 9), f.field))
     return findings
 

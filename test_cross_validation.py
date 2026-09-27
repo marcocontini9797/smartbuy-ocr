@@ -156,7 +156,7 @@ def test_price_mismatch_between_preliminare_and_atto():
 def test_invalid_codice_fiscale_and_expired_ape_and_stale_visura():
     findings = by_field(cross_validate(1, documents=[
         {"id": 1, "extracted_fields": {"intestatari": ["Rossi Mario RSSMRA80A01H501X"], "data_visura": "01/03/2026"}},
-        {"id": 2, "extracted_fields": {"data_emissione": "10/01/2015", "data_scadenza": "10/01/2025"}},
+        {"id": 2, "document_type":"ape", "extracted_fields": {"data_emissione": "10/01/2015", "data_scadenza": "10/01/2025"}},
     ], today=TODAY))
     assert findings["codice_fiscale"].status == "invalid"
     assert findings["ape.scadenza"].status == "invalid"

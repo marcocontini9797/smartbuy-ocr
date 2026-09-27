@@ -11,6 +11,7 @@ from core.operational_models import DocumentRequest
 from document_engine.checklist import build_checklist
 from document_engine.negotiation import build_negotiation_brief
 from document_engine.cross_validation import cross_validate, summarize
+from document_engine.agent_review import build_agent_review
 from document_engine.operational_services import route_ape_source, validate_gis
 from document_engine.external_sources import REGISTRY, source_plan
 from document_engine.acquisition_engine import build_acquisition_plan
@@ -78,11 +79,12 @@ def _findings(property_id: int, client):
 
 @router.get("/properties/{property_id}/cross-validation")
 def cross_validation(property_id: int, client=Depends(user_client)):
-    _, _, findings, _ = _findings(property_id, client)
+    property_record, documents, findings, _ = _findings(property_id, client)
     return {
         "property_id": property_id,
         "findings": [item.model_dump(mode="json") for item in findings],
         "summary": summarize(findings),
+        "agent_review": build_agent_review(property_id,property_record,documents,findings),
     }
 
 
