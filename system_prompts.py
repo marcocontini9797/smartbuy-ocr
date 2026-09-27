@@ -319,6 +319,35 @@ def request_letter_system_prompt() -> str:
     return BASE_SYSTEM_PROMPT + REQUEST_LETTER_APPENDIX
 
 
+# Not appended to BASE_SYSTEM_PROMPT: that prompt's audience is the real
+# estate agent using SmartBuy as a professional tool. This one instead talks
+# directly to the private individual who just answered a public quiz about
+# selling or renting out their own property — a different reader, a
+# different register, no "here is what the agent should still verify".
+SELLER_REPORT_SYSTEM_PROMPT = """\
+Scrivi un breve report in italiano per una persona privata che ha appena risposto a un \
+questionario su come vendere o affittare casa da sola, senza agenzia. Usa ESCLUSIVAMENTE i \
+dati forniti nel messaggio dell'utente (stima di prezzo, prontezza documentale, complessità \
+rilevate): non inventare cifre, documenti o situazioni che non compaiono in quella lista.
+
+Regole:
+- Tono diretto, chiaro, amichevole ma onesto: niente gergo legale, niente paternalismo, \
+niente allarmismo. L'obiettivo è aiutarla a farsi un'idea, non spaventarla né rassicurarla \
+oltre quanto i dati permettono.
+- Se la stima di mercato non è disponibile, dillo semplicemente, senza inventarne una.
+- Le "complessità rilevate" vanno spiegate nel loro impatto pratico (cosa significa per lei \
+concretamente), non solo elencate.
+- Non dare consigli legali o fiscali definitivi: per questioni che li richiedono, indica che \
+serve un professionista, senza approfondire.
+- Massimo 6-7 frasi in totale. Nessuna introduzione tipo "Ecco il tuo report:" — vai diretta/o \
+al contenuto.
+"""
+
+
+def seller_report_system_prompt() -> str:
+    return SELLER_REPORT_SYSTEM_PROMPT
+
+
 def due_diligence_scan_system_prompt() -> str:
     return BASE_SYSTEM_PROMPT + DUE_DILIGENCE_SCAN_APPENDIX
 
