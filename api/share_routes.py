@@ -32,7 +32,8 @@ class SharedAskRequest(BaseModel):
 
 
 def _anon_client():
-    url, key = os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_ANON_KEY")
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_PUBLISHABLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
     if not url or not key:
         raise HTTPException(503, "Condivisione non configurata")
     return create_client(url, key)
@@ -61,9 +62,6 @@ def shared_fascicolo(token: str):
     provenance = data["provenance"]
 
     try:
-        # cross_validate expects provenance keyed by id (same shape
-        # api/operations_routes.py._validation_sources builds); build_property_intelligence
-        # below wants the raw list instead — same rows, two different shapes.
         provenance_by_id = {str(row["id"]): row for row in provenance if row.get("id") is not None}
         findings = cross_validate(property_record["id"], facts=facts, documents=documents,
                                   provenance=provenance_by_id, property_record=property_record)
@@ -94,9 +92,6 @@ def shared_fascicolo(token: str):
 
 @router.post("/shared/{token}/ask")
 def shared_ask(token: str, payload: SharedAskRequest):
-    """Same assistant the agent has, offered to whoever holds the link: this is
-    the interactive half of "the buyer can do their own due diligence" — the
-    checklist above is the static half."""
     data = _fetch_shared(token)
     property_record = data["property"]
     context = build_agent_context(property_id=property_record["id"], question=payload.question,
@@ -122,12 +117,6 @@ def shared_document_file(token: str, document_id: int):
         raise HTTPException(502, "Servizio non raggiungibile") from exc
     if not path:
         raise HTTPException(404, "Documento non disponibile")
-    # smartbuy_shared_document_path is the authorization check (token valid,
-    # sharing enabled, document belongs to that property). Only a path it has
-    # already confirmed legitimate ever reaches the signing call below; the
-    # service-role client is used purely as a mechanical signer for that one
-    # path, never for a query shaped by unverified caller input, because
-    # storage RLS itself requires auth.uid() and an anonymous visitor has none.
     from integrations.supabase.client import supabase as service_client
     try:
         signed = service_client.storage.from_(DOCUMENT_BUCKET).create_signed_url(path, 300)
