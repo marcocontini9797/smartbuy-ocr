@@ -57,6 +57,7 @@ def _client() -> CatastoClient:
 def _checks(client, property_id: int) -> list[dict]:
     try:
         return (client.table("property_registry_checks").select("*").eq("property_id", property_id)
+                .eq("environment", openapi_catasto.environment())
                 .order("created_at", desc=True).execute().data or [])
     except Exception:
         return []
@@ -250,6 +251,8 @@ def owners(property_id: int, payload: Purchase, client=Depends(user_client)):
 
 def _finish_prospetto(client, property_id: int, comune: dict, row: dict, result: dict) -> dict:
     fields, owner_list = registry.visura_fields(result, comune["nome"])
+    if row.get("environment") != "production":
+        return _finish_simulation(client, row, {"owners": owner_list, "fields": fields}, result.get("id"))
     document = None
     if fields:
         unit = row["params"]
@@ -290,12 +293,16 @@ def official_visura(property_id: int, payload: Purchase, client=Depends(user_cli
 
 
 def _finish_visura(client, property_id: int, row: dict, pdf: bytes) -> dict:
+    if row.get("environment") != "production":
+        return _finish_simulation(client, row, {"pdf": True}, row.get("request_id"))
     unit = row["params"]
     prospetto = next((c for c in _checks(client, property_id) if c["kind"] == "prospetto" and c["status"] == "done"
                       and (c.get("params") or {}).get("foglio") == unit["foglio"]
                       and (c.get("params") or {}).get("particella") == unit["particella"]
                       and ((c.get("params") or {}).get("subalterno") or None) == (unit.get("subalterno") or None)), None)
     fields = ((prospetto or {}).get("result") or {}).get("fields") or {"note_incertezza": ["Dati da leggere dal PDF"]}
+    if prospetto and prospetto.get("document_id") is not None:
+        fields = {**fields, "_validation_origin": {"document_id": prospetto["document_id"], "reason": "fields_copied_from_prospetto"}}
     document = _save_document(client, property_id=property_id, document_type="visura_catastale",
                               file_name=f"Visura catastale Fg.{unit['foglio']} Part.{unit['particella']}.pdf",
                               fields=fields, content=pdf, media_type="application/pdf")
@@ -338,6 +345,8 @@ def mortgage_inspection(property_id: int, payload: Purchase, client=Depends(user
 
 def _finish_inspection(client, property_id: int, comune: dict, row: dict, result: dict) -> dict:
     summary = registry.mortgage_summary(result)
+    if row.get("environment") != "production":
+        return _finish_simulation(client, row, summary, result.get("id"))
     unit = row["params"]
     riferimento = {"comune": comune["nome"], "foglio": unit["foglio"], "particella": unit["particella"],
                    "subalterno": unit.get("subalterno") or None}
@@ -351,8 +360,21 @@ def _finish_inspection(client, property_id: int, comune: dict, row: dict, result
     return _record(client, payload)
 
 
+def _finish_simulation(client, row: dict, result: dict, request_id: str | None) -> dict:
+    """Keep examples only in the environment-tagged request log, never as evidence."""
+    payload = {**row, "status": "done", "document_id": None, "request_id": request_id,
+               "cost_eur": 0, "result": {**result, "simulated": True,
+               "notice": "Dati di test: non utilizzabili per verificare un immobile reale."}}
+    if row.get("id"):
+        _update(client, row["id"], {k: v for k, v in payload.items() if k not in {"id", "property_id"}})
+        return payload
+    return _record(client, payload)
+
+
 def _finish_pending(client, property_id: int, check: dict) -> None:
     """Complete a request that was still running when it was bought."""
+    if check.get("environment") != openapi_catasto.environment():
+        return
     try:
         catasto = CatastoClient(wait_seconds=0)
         result = catasto.resume(check["kind"], check["request_id"])

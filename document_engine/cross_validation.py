@@ -18,6 +18,8 @@ Deterministic by design: no LLM is involved once values are extracted.
 from __future__ import annotations
 
 import re
+import json
+import math
 import unicodedata
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
@@ -57,7 +59,7 @@ def parse_number(value: Any) -> float | None:
     if value is None or isinstance(value, bool):
         return None
     if isinstance(value, (int, float)):
-        return float(value)
+        return float(value) if math.isfinite(value) else None
     match = re.search(r"-?\d[\d.,' ]*", str(value))
     if not match:
         return None
@@ -126,7 +128,11 @@ def norm_comune(value: Any) -> str | None:
 
 def norm_categoria(value: Any) -> str | None:
     match = re.search(r"\b([A-F])\s*[/\-]?\s*0*(\d{1,2})\b", strip_accents(str(value or "")).upper())
-    return f"{match.group(1)}/{int(match.group(2))}" if match else None
+    if not match:
+        return None
+    group, number = match.group(1), int(match.group(2))
+    maximum = {"A": 11, "B": 8, "C": 7, "D": 10, "E": 9, "F": 7}[group]
+    return f"{group}/{number}" if 1 <= number <= maximum else None
 
 
 _ENERGY_CLASSES = ["A4", "A3", "A2", "A1", "A+", "B", "C", "D", "E", "F", "G"]
@@ -135,7 +141,7 @@ _ENERGY_CLASSES = ["A4", "A3", "A2", "A1", "A+", "B", "C", "D", "E", "F", "G"]
 def norm_energy_class(value: Any) -> str | None:
     text = strip_accents(str(value or "")).upper()
     text = re.sub(r"CLASSE|ENERGETICA|[:\s]", "", text)
-    match = re.search(r"A[1-4]|A\+{1,4}|[A-G]", text)
+    match = re.fullmatch(r"A[1-4]|A\+{1,4}|[A-G]", text)
     if not match:
         return None
     klass = match.group(0)
@@ -199,6 +205,8 @@ def norm_address(value: Any) -> tuple[str, str | None] | None:
     for index in range(len(tokens) - 1, -1, -1):
         if re.fullmatch(r"\d+[a-z]?", tokens[index]):
             number = tokens[index]
+            if index + 2 < len(tokens) and tokens[index + 1] == "/" and re.fullmatch(r"[a-z]", tokens[index + 2]):
+                number += tokens[index + 2]
             tokens = tokens[:index]
             break
     street = " ".join(t for t in tokens if t != "/")
@@ -210,13 +218,18 @@ _FULL_OWNERSHIP = ("proprieta esclusiva", "piena proprieta", "proprieta per 1/1"
 
 def parse_quota(value: Any) -> float | None:
     text = norm_text(value)
+    if re.search(r"[-−]\s*\d", str(value)):
+        return None
     if not text:
         return None
+    match = re.search(r"(\d+)\s*/\s*(\d+)", text)
+    if match:
+        return int(match.group(1)) / int(match.group(2)) if int(match.group(2)) else None
+    percent = re.search(r"(\d+(?:[.,]\d+)?)\s*%", str(value))
+    if percent:
+        return float(percent.group(1).replace(",", ".")) / 100
     if any(marker in text for marker in _FULL_OWNERSHIP):
         return 1.0
-    match = re.search(r"(\d+)\s*/\s*(\d+)", text)
-    if match and int(match.group(2)):
-        return int(match.group(1)) / int(match.group(2))
     return None
 
 
@@ -248,7 +261,8 @@ def _people(a: frozenset, b: frozenset) -> tuple[str, str]:
         return EQUAL, ""
     unmatched = [p for p in a if not any(p <= q or q <= p for q in b)]
     unmatched += [q for q in b if not any(q <= p or p <= q for p in a)]
-    if not unmatched:
+    unique_matches = len(a) == len(b) and all(sum(p <= q or q <= p for q in b) == 1 for p in a) and all(sum(q <= p or p <= q for p in a) == 1 for q in b)
+    if not unmatched and unique_matches:
         return COMPATIBLE, "Stessi soggetti, nominativi scritti in forma parziale in una fonte"
     return DIFFERENT, "Soggetti non coincidenti: " + ", ".join(" ".join(sorted(p)).title() for p in unmatched)
 
@@ -268,6 +282,12 @@ def _energy(a: str, b: str) -> tuple[str, str]:
         return EQUAL, ""
     gap = abs(energy_class_rank(a) - energy_class_rank(b))
     return DIFFERENT, f"Classi distanti {gap} livell{'o' if gap == 1 else 'i'}"
+
+
+def norm_boolean(value: Any) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    return {"si": True, "true": True, "no": False, "false": False}.get(norm_text(value))
 
 
 @dataclass(frozen=True)
@@ -311,17 +331,25 @@ SPECS: dict[str, FieldSpec] = {spec.key: spec for spec in [
     FieldSpec("superficie_catastale_mq", "Superficie catastale", "medium", parse_number, _numeric(0.03), _show_number(" m²")),
     FieldSpec("prezzo_eur", "Prezzo", "high", parse_number, _numeric(0.0), _show_number(" €")),
     FieldSpec("canone_mensile_eur", "Canone mensile", "high", parse_number, _numeric(0.0), _show_number(" €")),
+    *[FieldSpec("tecnica." + key, label, "high", norm_boolean, display=lambda v: "Sì" if v else "No") for key, label in (
+        ("conformita_catastale", "Conformità catastale dichiarata"),
+        ("conformita_urbanistica", "Conformità urbanistica dichiarata"),
+        ("stato_legittimo_verificato", "Stato legittimo verificato dal tecnico"),
+    )],
 ]}
 
 
 # Fact names / document paths -> canonical field. Riferimenti catastali are
 # exploded into their components before this lookup.
 ALIASES = {
-    "energy_class": "classe_energetica", "classe_energetica": "classe_energetica", "classe": "classe_energetica",
+    **{key: "tecnica." + key for key in ("conformita_catastale", "conformita_urbanistica", "stato_legittimo_verificato")},
+    "energy_class": "classe_energetica", "classe_energetica": "classe_energetica",
     "epgl": "epgl", "epgl_kwh_mq_anno": "epgl",
     "intestatari": "proprietari", "owners": "proprietari", "owner": "proprietari", "proprietari": "proprietari",
-    "parte_venditrice": "proprietari", "promittente_venditore": "proprietari", "locatore": "proprietari", "avente_causa": "proprietari",
-    "diritti_e_quote": "quota_proprieta", "quota": "quota_proprieta",
+    # Transaction parties are compared by role/unit/date in transaction_validation.
+    # A seller in a historic deed or a landlord is not automatically today's owner.
+    # A free-text list of rights/shares cannot be reduced to its first fraction.
+    "quota": "quota_proprieta",
     "superficie_utile_mq": "superficie_utile_mq", "surface_useful_m2": "superficie_utile_mq",
     "superficie_dichiarata_mq": "superficie_commerciale_mq", "superficie_commerciale_mq": "superficie_commerciale_mq",
     "superficie_commerciale_considerata_mq": "superficie_commerciale_mq", "surface_m2": "superficie_commerciale_mq",
@@ -332,7 +360,7 @@ ALIASES = {
     "address": "indirizzo", "indirizzo": "indirizzo",
     "comune": "catasto.comune", "city": "catasto.comune", "foglio": "catasto.foglio", "particella": "catasto.particella",
     "mappale": "catasto.particella", "subalterno": "catasto.subalterno", "sub": "catasto.subalterno",
-    "sezione": "catasto.sezione", "categoria": "catasto.categoria", "category": "catasto.categoria",
+    "sezione": "catasto.sezione", "categoria": "catasto.categoria", "category": "catasto.categoria", "categoria_catastale": "catasto.categoria",
     "classe_catastale": "catasto.classe", "consistenza": "catasto.consistenza",
     "rendita_catastale_eur": "catasto.rendita_eur", "rendita_catastale": "catasto.rendita_eur", "rendita": "catasto.rendita_eur",
 }
@@ -364,6 +392,9 @@ class Claim:
     page: Any = None
     source_text: str | None = None
     evidence_ids: list[str] = field(default_factory=list)
+    independence_key: str | None = None
+    source_path: str | None = None
+    as_of: str | None = None
 
 
 def _unwrap(value: Any) -> Any:
@@ -374,7 +405,8 @@ def _unwrap(value: Any) -> Any:
 
 def _float(value: Any) -> float | None:
     try:
-        return float(value) if value is not None else None
+        result = float(value) if value is not None else None
+        return max(0.0, min(1.0, result)) if result is not None and math.isfinite(result) else None
     except (TypeError, ValueError):
         return None
 
@@ -439,19 +471,25 @@ def effective_facts(facts: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
 def claims_from_facts(facts: Iterable[dict[str, Any]], provenance: dict[str, dict] | None = None) -> list[Claim]:
     claims: list[Claim] = []
     provenance = provenance or {}
-    for fact in effective_facts(facts):
+    facts = effective_facts(facts)
+    verified_fields = {(str(f.get("source_document_id")), canonical) for f in facts
+                       if f.get("verification_status") in HUMAN_VERIFIED
+                       for canonical, _ in _expand(str(f.get("fact_name") or f.get("field") or ""), f.get("fact_value", f.get("value")))}
+    for fact in facts:
         name = str(fact.get("fact_name") or fact.get("field") or "")
         prov = provenance.get(str(fact.get("provenance_id"))) or fact.get("provenance") or {}
         document_id = fact.get("source_document_id") or prov.get("document_id")
         source_type = fact.get("source_type") or fact.get("source") or "unknown"
         source_key = f"doc:{document_id}" if document_id is not None else f"type:{source_type}"
         for canonical, raw in _expand(name, fact.get("fact_value", fact.get("value"))):
+            if fact.get("verification_status") not in HUMAN_VERIFIED and (str(document_id), canonical) in verified_fields:
+                continue
             claim = _claim(
                 canonical, raw, source_key=source_key,
                 source_label=prov.get("source_document") or (f"Documento {document_id}" if document_id is not None else str(source_type)),
                 fact_id=str(fact["id"]) if fact.get("id") is not None else None,
                 confidence=_float(fact.get("confidence_score", fact.get("confidence"))),
-                page=prov.get("source_page"), source_text=prov.get("source_text"),
+                page=prov.get("source_page"), source_text=prov.get("source_text"), source_path=name,
                 evidence_ids=[str(item) for item in fact.get("evidence_ids") or []],
             )
             if claim:
@@ -468,7 +506,7 @@ def claims_from_documents(documents: Iterable[dict[str, Any]]) -> list[Claim]:
             continue
         document_id = document.get("id")
         for name, value in fields.items():
-            # A buyer is not an owner: only seller-side parties feed "proprietari".
+            # Parties with contractual roles use the dedicated contextual checks.
             if name in {"parte_acquirente", "promittente_acquirente", "conduttore", "dante_causa"}:
                 continue
             for canonical, raw in _expand(name, value):
@@ -477,6 +515,10 @@ def claims_from_documents(documents: Iterable[dict[str, Any]]) -> list[Claim]:
                     source_label=document.get("file_name") or f"Documento {document_id}",
                     document_type=document.get("document_type"),
                     confidence=_float(_field_confidence(value) if _field_confidence(value) is not None else document.get("extraction_confidence")),
+                    page=value.get("source_page", value.get("page")) if isinstance(value, dict) else None,
+                    source_text=value.get("fonte", value.get("source_text")) if isinstance(value, dict) else fields.get(name + "_fonte"),
+                    evidence_ids=[str(e) for e in (value.get("evidence_ids") or [])] if isinstance(value, dict) else [],
+                    source_path=name,
                 )
                 if claim:
                     claims.append(claim)
@@ -528,7 +570,7 @@ def _collapse_source(spec: FieldSpec, claims: list[Claim]) -> _SourceValue:
     for claim in claims:
         weights[_hashable(claim.normalized)] += max(claim.confidence if claim.confidence is not None else 0.5, 0.001)
     groups: list[list[Any]] = []
-    for key in weights:
+    for key in sorted(weights, key=repr):
         for group in groups:
             if spec.compare(_unhash(group[0]), _unhash(key))[0] != DIFFERENT:
                 group.append(key)
@@ -557,24 +599,26 @@ def _values_payload(spec: FieldSpec, claims: list[Claim]) -> list[dict[str, Any]
         "value": claim.raw, "normalized": spec.display(claim.normalized), "source": claim.source_label,
         "source_key": claim.source_key, "document_type": claim.document_type, "fact_id": claim.fact_id,
         "confidence": claim.confidence, "page": claim.page, "source_text": claim.source_text,
+        "source_path": claim.source_path, "as_of": claim.as_of, "evidence_ids": claim.evidence_ids,
     } for claim in claims]
 
 
 def _finding(property_id: int, spec: FieldSpec, status: str, claims: list[Claim], *, severity: str,
              confidence: float, canonical: Any, detail: str, action: str | None) -> CrossValidationFinding:
     return CrossValidationFinding(
-        finding_id=stable_id("cross-validation", property_id, spec.key, status, *sorted(c.source_key for c in claims)),
+        finding_id=stable_id("cross-validation", property_id, spec.key, status, *sorted({c.source_key for c in claims})),
         property_id=property_id, field=spec.key, label=spec.label, status=status, severity=severity,
         confidence=round(confidence, 3), canonical_value=spec.display(canonical) if canonical is not None else None,
         values=_values_payload(spec, claims), sources=sorted({c.source_key for c in claims}),
         evidence_ids=sorted({e for c in claims for e in c.evidence_ids}), detail=detail, recommended_action=action,
+        rule_id="field_comparison",
     )
 
 
 def _compare_field(property_id: int, spec: FieldSpec, claims: list[Claim]) -> list[CrossValidationFinding]:
     by_source: dict[str, list[Claim]] = defaultdict(list)
     for claim in claims:
-        by_source[claim.source_key].append(claim)
+        by_source[claim.independence_key or claim.source_key].append(claim)
     sources = [_collapse_source(spec, items) for items in by_source.values()]
     findings: list[CrossValidationFinding] = []
 
@@ -610,16 +654,25 @@ def _compare_field(property_id: int, spec: FieldSpec, claims: list[Claim]) -> li
         ))
         return findings
 
-    reference = max(sources, key=lambda s: s.confidence)
+    reference = max(sorted(sources, key=lambda s: s.source_key), key=lambda s: s.confidence)
     verdicts = [(s, *spec.compare(reference.value, s.value)) for s in sources if s is not reference]
     all_claims = [c for s in sources for c in s.claims]
     if any(v == DIFFERENT for _, v, _ in verdicts):
+        economic_context = spec.key in {"prezzo_eur", "canone_mensile_eur"}
+        dated = {c.as_of for c in all_claims}
+        temporal = None not in dated and len(dated) > 1 and spec.key in {
+            "catasto.categoria", "catasto.rendita_eur", "proprietari", "codici_fiscali", "quota_proprieta",
+            "classe_energetica", "epgl", "prezzo_eur", "canone_mensile_eur",
+            "tecnica.conformita_catastale", "tecnica.conformita_urbanistica", "tecnica.stato_legittimo_verificato",
+        }
         details = [f"{s.claims[0].source_label}: {spec.display(s.value)}" + (f" ({d})" if d else "")
                    for s, v, d in verdicts if v == DIFFERENT]
         findings.append(_finding(
-            property_id, spec, "conflict", all_claims, severity=spec.severity, confidence=0.0, canonical=None,
-            detail=f"{reference.claims[0].source_label}: {spec.display(reference.value)} — " + "; ".join(details),
-            action="Verificare le fonti e confermare il valore corretto",
+            property_id, spec, "attention" if temporal or economic_context else "conflict", all_claims, severity=spec.severity, confidence=0.0, canonical=None,
+            detail=f"{reference.claims[0].source_label}: {spec.display(reference.value)} — " + "; ".join(details) +
+                   (" Le fonti si riferiscono a date diverse: potrebbe trattarsi di una variazione nel tempo." if temporal else "") +
+                   (" Verificare se si tratta di prezzo richiesto o concordato, della stessa operazione, periodo e componenti incluse." if economic_context else ""),
+            action="Ricostruire contesto, cronologia e fonte pertinente alla pratica" if temporal or economic_context else "Verificare le fonti e confermare il valore corretto",
         ))
     else:
         disbelief = 1.0
@@ -641,6 +694,21 @@ def _surface_cross_measure(property_id: int, claims: list[Claim]) -> list[CrossV
     if not utile or not commerciale:
         return []
     spec = SPECS["superficie_utile_mq"]
+    related = utile + commerciale
+    uncertain = any(c.confidence is not None and c.confidence < .4 for c in related)
+    for values in (utile, [c for c in commerciale if c.field == "superficie_commerciale_mq"],
+                   [c for c in commerciale if c.field == "superficie_catastale_mq"]):
+        if values and any(SPECS[values[0].field].compare(values[0].normalized, c.normalized)[0] == DIFFERENT for c in values[1:]):
+            uncertain = True
+    if uncertain:
+        return [CrossValidationFinding(
+            finding_id=stable_id("cross-validation", property_id, "superficie.rapporto", *sorted({c.source_key for c in related})),
+            property_id=property_id, field="superficie.rapporto", label="Superfici da confermare", status="attention", severity="medium",
+            values=_values_payload(spec, related), sources=sorted({c.source_key for c in related}),
+            evidence_ids=sorted({e for c in related for e in c.evidence_ids}), rule_id="surface_ratio",
+            detail="Il rapporto non è valutabile in modo affidabile: contiene letture incerte o valori discordanti della stessa misura.",
+            recommended_action="Conferma le misure e le porzioni considerate prima di confrontarne il rapporto.",
+        )]
     u = max(utile, key=lambda c: c.confidence or 0).normalized
     k = max(commerciale, key=lambda c: c.confidence or 0).normalized
     if not k:
@@ -652,11 +720,13 @@ def _surface_cross_measure(property_id: int, claims: list[Claim]) -> list[CrossV
     return [CrossValidationFinding(
         finding_id=stable_id("cross-validation", property_id, "superficie.rapporto", *sorted({c.source_key for c in related})),
         property_id=property_id, field="superficie.rapporto", label="Superficie utile vs commerciale",
-        status="compatible" if ok else "conflict", severity="low" if ok else "medium",
+        status="compatible" if ok else "attention", severity="low" if ok else "medium",
         confidence=0.8 if ok else 0.0, canonical_value=f"{ratio:.0%}",
         values=_values_payload(spec, related), sources=sorted({c.source_key for c in related}),
         detail=(f"La superficie utile è il {ratio:.0%} di quella commerciale/catastale "
-                f"(intervallo fisiologico {low:.0%}–{high:.0%})."),
+                f"(intervallo indicativo di controllo {low:.0%}–{high:.0%}; non è una soglia normativa). "
+                "Verificare criteri di misura, pertinenze e porzioni considerate."),
+        evidence_ids=sorted({e for c in related for e in c.evidence_ids}), rule_id="surface_ratio",
         recommended_action=None if ok else "Verificare la superficie con planimetria catastale e APE",
     )]
 
@@ -746,13 +816,35 @@ def cross_validate(
     property_record: dict[str, Any] | None = None,
 ) -> list[CrossValidationFinding]:
     """Cross-validate every comparable field of a property, most urgent first."""
+    from document_engine.validation_rules import (annotate_claims, claim_keys, contextual_findings,
+        effective_documents, eligible_sources, unit_comparisons)
+    from document_engine.transaction_validation import transaction_findings
+    from document_engine.operation_validation import operation_findings
     facts, documents = list(facts), list(documents)
+    # Resolve provenance links before applying verdicts or source-scope guards.
+    facts = [{**f, "source_document_id": f.get("source_document_id") or
+              ((provenance or {}).get(str(f.get("provenance_id"))) or f.get("provenance") or {}).get("document_id"),
+              "provenance": (provenance or {}).get(str(f.get("provenance_id"))) or f.get("provenance") or {}} for f in facts]
+    facts, documents, eligibility = eligible_sources(property_id, facts, documents)
+    known_ids = {str(d["id"]) for d in documents}
+    fact_documents = [{"id": did, "extracted_fields": {}} for did in sorted({str(f["source_document_id"]) for f in facts
+                       if f.get("source_document_id") is not None} - known_ids)]
+    contextual_documents = effective_documents(documents + fact_documents, facts)
     # Persisted field verdicts take precedence over the document's original snapshot,
     # including rejection: never resurrect the raw value as a second reading.
-    represented = {(str(f.get("source_document_id")), f.get("fact_name")) for f in facts if f.get("source_document_id") is not None}
-    documents = [{**d, "extracted_fields": {k:v for k,v in (d.get("extracted_fields") or {}).items() if (str(d.get("id")), k) not in represented}} for d in documents]
-    claims = claims_from_facts(facts, provenance) + claims_from_documents(documents) + claims_from_property(property_record)
-    multiunit, scope_findings = _multiunit_sources(property_id, facts, documents)
+    represented = defaultdict(set)
+    represented_names = defaultdict(set)
+    for fact in facts:
+        if fact.get("source_document_id") is not None:
+            key, name = str(fact["source_document_id"]), fact.get("fact_name") or fact.get("field") or ""
+            represented[key].update(claim_keys(name, fact.get("fact_value", fact.get("value"))))
+            represented_names[key].add(name)
+    raw_documents = [{**d, "extracted_fields": {k:v for k,v in d["extracted_fields"].items()
+        if k not in represented_names[str(d["id"])] and not claim_keys(k, v) & represented[str(d["id"])]}} for d in documents]
+    raw_claims = [c for c in claims_from_documents(documents) if c.field not in represented[c.source_key.removeprefix("doc:")]
+                  and c.source_path not in represented_names[c.source_key.removeprefix("doc:")]]
+    claims = annotate_claims(claims_from_facts(facts, provenance) + raw_claims, contextual_documents) + claims_from_property(property_record)
+    multiunit, scope_findings = unit_comparisons(property_id, contextual_documents)
     claims = [c for c in claims if c.source_key not in multiunit]
     by_field: dict[str, list[Claim]] = defaultdict(list)
     for claim in claims:
@@ -761,10 +853,17 @@ def cross_validate(
     for key, items in by_field.items():
         findings += _compare_field(property_id, SPECS[key], items)
     findings += scope_findings
+    findings += eligibility
+    findings += contextual_findings(property_id, contextual_documents, property_record, today or date.today())
+    findings += transaction_findings(property_id, contextual_documents, property_record, today or date.today())
+    findings += operation_findings(property_id, contextual_documents, today or date.today())
     findings += _surface_cross_measure(property_id, claims)
-    validity = _validity_checks(property_id, effective_facts(facts), documents, today or date.today())
+    validity = _validity_checks(property_id, effective_facts(facts), raw_documents, today or date.today())
     findings += list({f.finding_id: f for f in validity}.values())
-    findings.sort(key=lambda f: (_STATUS_ORDER.get(f.status, 9), _SEVERITY_ORDER.get(f.severity, 9), f.field))
+    findings = list({f.finding_id: f for f in findings}.values())
+    for finding in findings:
+        finding.values.sort(key=lambda v: (str(v.get("source_key", "")), str(v.get("source_path", "")), str(v.get("value", ""))))
+    findings.sort(key=lambda f: (_STATUS_ORDER.get(f.status, 9), _SEVERITY_ORDER.get(f.severity, 9), f.field, f.finding_id))
     return findings
 
 
@@ -772,8 +871,9 @@ def summarize(findings: list[CrossValidationFinding]) -> dict[str, Any]:
     counts = Counter(f.status for f in findings)
     blocking = [f for f in findings if f.status in {"conflict", "invalid"} and f.severity == "high"]
     verified = counts["consistent"] + counts["compatible"]
-    comparable = verified + counts["conflict"] + counts["insufficient_evidence"] + counts["extraction_unstable"]
+    comparable = len(findings)
     return {
+        "engine_version": "3.1", "assessment": "checks_require_review" if any(f.status in {"attention", "invalid", "conflict", "extraction_unstable"} for f in findings) else "no_issues_in_available_checks",
         "consistent": counts["consistent"], "compatible": counts["compatible"], "conflicts": counts["conflict"],
         "invalid": counts["invalid"], "extraction_unstable": counts["extraction_unstable"],
         "attention": counts["attention"], "insufficient_evidence": counts["insufficient_evidence"],
@@ -791,8 +891,27 @@ CRITICAL_EXTRACTION_FIELDS = {
     "riferimento", "riferimenti_catastali", "intestatari", "codici_fiscali_intestatari",
     "parte_venditrice", "promittente_venditore", "prezzo_eur", "canone_mensile_eur",
     "classe_energetica", "superficie_utile_mq", "superficie_dichiarata_mq", "superficie_catastale_mq",
-    "data_emissione", "data_scadenza",
+    "data_emissione", "data_scadenza", "conformita_catastale", "conformita_urbanistica", "stato_legittimo_verificato",
+    "parte_acquirente", "avente_causa", "locatore", "conduttore", "titolarita", "formalita", "condizioni_dettaglio",
+    "collegamento_operazione",
 }
+
+
+def _semantic_record(value, key=""):
+    """Compare structured second readings without counting citation formatting."""
+    value = _unwrap(value)
+    if isinstance(value, dict):
+        return {k: _semantic_record(v, k) for k, v in sorted(value.items())
+                if k not in {"fonte", "confidence", "source_page", "page", "evidence_ids", "source_text", "fact_id"} and v is not None}
+    if isinstance(value, list):
+        return sorted((_semantic_record(v, key) for v in value), key=lambda v: json.dumps(v, sort_keys=True))
+    if (key.startswith("data_") or key == "data") and parse_date(value):
+        return parse_date(value).isoformat()
+    if key == "quota" and parse_quota(value) is not None:
+        return parse_quota(value)
+    if key == "soggetto":
+        return sorted(sorted(p) for p in (norm_people(value) or []))
+    return norm_text(value) if isinstance(value, str) else value
 
 
 def _normalized_by_field(name: str, value: Any) -> dict[str, Any]:
@@ -812,6 +931,34 @@ def extraction_disagreements(first: dict[str, Any], second: dict[str, Any]) -> d
     """
     disagreements: dict[str, Any] = {}
     for name in sorted(CRITICAL_EXTRACTION_FIELDS & set(first) & set(second)):
+        if name in {"parte_venditrice", "promittente_venditore", "parte_acquirente", "avente_causa", "locatore", "conduttore"}:
+            a, b = norm_people(_unwrap(first[name])), norm_people(_unwrap(second[name]))
+            if a and b and _people(a, b)[0] == DIFFERENT:
+                disagreements[name] = second[name]
+            continue
+        if name in {"titolarita", "formalita", "condizioni_dettaglio", "collegamento_operazione"}:
+            if _unwrap(first[name]) and _unwrap(second[name]) and _semantic_record(first[name]) != _semantic_record(second[name]):
+                disagreements[name] = second[name]
+            continue
+        if name in {"data_emissione", "data_scadenza"}:
+            a_date, b_date = parse_date(_unwrap(first[name])), parse_date(_unwrap(second[name]))
+            if a_date and b_date and a_date != b_date:
+                disagreements[name] = second[name]
+            continue
+        if name in _RIFERIMENTO_KEYS and isinstance(_unwrap(first[name]), list) and isinstance(_unwrap(second[name]), list):
+            left = [_normalized_by_field(name, v) for v in _unwrap(first[name])]
+            right = [_normalized_by_field(name, v) for v in _unwrap(second[name])]
+            if len(left) == len(right):
+                identity_keys = ("catasto.comune", "catasto.sezione", "catasto.foglio", "catasto.particella", "catasto.subalterno")
+                def identity(v):
+                    return tuple(v.get(k) for k in identity_keys)
+                a_map, b_map = {identity(v): v for v in left}, {identity(v): v for v in right}
+                if set(a_map) != set(b_map) or any(
+                    SPECS[k].compare(a_map[i][k], b_map[i][k])[0] == DIFFERENT
+                    for i in a_map.keys() & b_map.keys() for k in a_map[i].keys() & b_map[i].keys()
+                ):
+                    disagreements[name] = second[name]
+            continue
         a, b = _normalized_by_field(name, first[name]), _normalized_by_field(name, second[name])
         for canonical in a.keys() & b.keys():
             if SPECS[canonical].compare(a[canonical], b[canonical])[0] == DIFFERENT:

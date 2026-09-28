@@ -21,7 +21,7 @@ from typing import Any
 
 from core.operational_models import CrossValidationFinding
 from fascicolo import Fascicolo, aggiungi_al_fascicolo
-from document_engine.cross_validation import _expand, norm_categoria
+from document_engine.validation_rules import category_findings, effective_documents, eligible_sources
 from document_engine.typology import Typology, contract_of, typology_of, TYPOLOGIES
 from document_engine.workflow_context import applicability, document_condition, QUESTIONS
 from red_flags import run_all_red_flags
@@ -290,33 +290,12 @@ def _finding_issue(finding: CrossValidationFinding) -> dict[str, Any] | None:
         level = "to_check"
     else:
         return None
-    return {"source": "verifica", "category": finding.field, "level": level, "severity": finding.severity, "title": finding.label or finding.field,
-            "detail": finding.detail, "action": finding.recommended_action, "reference": None}
-
-
-# Cellars, garages and parking spaces sold with the main unit.
-_PERTINENZE = frozenset({"C/2", "C/6", "C/7"})
-
-
-def _category_issue(document: dict[str, Any], typology: Typology) -> dict[str, Any] | None:
-    """A shop registered as a dwelling (or the reverse) is a problem for the sale."""
-    fields = document.get("extracted_fields") or {}
-    categories = set()
-    for name in ("riferimento", "riferimenti_catastali"):
-        for canonical, raw in _expand(name, fields.get(name)):
-            if canonical == "catasto.categoria" and norm_categoria(raw):
-                categories.add(norm_categoria(raw))
-    allowed = typology.categories | (_PERTINENZE if typology.key != "box" else frozenset())
-    wrong = sorted(c for c in categories if c not in allowed)
-    if not wrong or not categories - _PERTINENZE and typology.key != "box":
-        return None  # only pertinenze listed: the main unit is not in this document
-    expected = ", ".join(sorted(typology.categories)) if len(typology.categories) <= 4 else "abitativa (A/1–A/9)"
-    return {"source": "verifica", "category": "categoria_catastale", "level": "problem", "severity": "high",
-            "title": f"Categoria catastale {', '.join(wrong)} non coerente con l'immobile",
-            "detail": f"Per {typology.label.lower()} ci si aspetta una categoria {expected}. "
-                      "Una destinazione catastale diversa può impedire l'uso previsto o richiedere un cambio d'uso.",
-            "action": "Verificare con un tecnico la destinazione d'uso legittima e l'eventuale cambio di categoria.",
-            "reference": None}
+    category = "categoria_catastale" if finding.rule_id == "category_use" else "proprietari" if finding.rule_id in {"party_roles", "ownership_rights"} else finding.field
+    return {"source": "verifica", "category": category,
+            "level": level, "severity": finding.severity, "title": finding.label or finding.field,
+            "detail": finding.detail, "action": finding.recommended_action, "reference": None,
+            "finding_id": finding.finding_id, "rule_id": finding.rule_id, "sources": finding.sources,
+            "evidence_ids": finding.evidence_ids, "scope": finding.scope}
 
 
 def build_checklist(
@@ -327,6 +306,11 @@ def build_checklist(
     facts: list[dict[str, Any]] | None = None,
     today: date | None = None,
 ) -> dict[str, Any]:
+    facts, documents, eligibility = eligible_sources(property_record["id"], facts or [], documents)
+    findings = list(findings)
+    fallback = eligibility + category_findings(property_record["id"], property_record, effective_documents(documents, facts))
+    present = {f.finding_id for f in findings}
+    findings.extend(f for f in fallback if f.finding_id not in present)
     is_condominium = property_record.get("is_condominio")
     typology, contract = typology_of(property_record), contract_of(property_record)
     specs = tuple(s for s in specs_for(property_record) if s.typologies is None or typology.key in s.typologies)
@@ -360,12 +344,6 @@ def build_checklist(
         issue = _flag_issue(flag)
         target = items.get(category_to_item.get(flag.categoria, ""))
         (target.issues if target else general).append(issue)
-
-    for document in documents:
-        issue = _category_issue(document, typology)
-        if issue:
-            target = items.get("visura_catastale") if document_kind(document.get("document_type")) == "visura_catastale" else None
-            (target.issues if target else general).append(issue)
 
     for finding in findings:
         issue = _finding_issue(finding)
@@ -410,7 +388,7 @@ def build_checklist(
     elif to_check:
         verdict, tone = "Quasi pronto: alcuni punti da ricontrollare", "to_check"
     else:
-        verdict, tone = "Documentazione completa e coerente per la trattativa", "verified"
+        verdict, tone = "Documenti presenti: nessuna criticità nei controlli disponibili", "verified"
 
     return {
         "items": [asdict(item) for item in ordered],

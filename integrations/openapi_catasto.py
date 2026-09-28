@@ -39,7 +39,8 @@ class OpenapiPending(RuntimeError):
 
 
 def configured() -> bool:
-    return bool(os.getenv("OPENAPI_CATASTO_TOKEN", "").strip())
+    variable = "OPENAPI_CATASTO_SANDBOX_TOKEN" if environment() == "sandbox" else "OPENAPI_CATASTO_TOKEN"
+    return bool(os.getenv(variable, "").strip())
 
 
 def environment() -> str:
@@ -49,10 +50,11 @@ def environment() -> str:
 class CatastoClient:
     def __init__(self, token: str | None = None, sandbox: bool | None = None, http: httpx.Client | None = None,
                  wait_seconds: float = 45, poll_seconds: float = 3):
-        token = (token or os.getenv("OPENAPI_CATASTO_TOKEN", "")).strip()
-        if not token:
-            raise OpenapiError("Servizio Catasto non configurato: manca OPENAPI_CATASTO_TOKEN")
         sandbox = environment() == "sandbox" if sandbox is None else sandbox
+        variable = "OPENAPI_CATASTO_SANDBOX_TOKEN" if sandbox else "OPENAPI_CATASTO_TOKEN"
+        token = (token if token is not None else os.getenv(variable, "")).strip()
+        if not token:
+            raise OpenapiError(f"Servizio Catasto non configurato: manca {variable}")
         self.environment = "sandbox" if sandbox else "production"
         self.http = http or httpx.Client(base_url=SANDBOX_URL if sandbox else PRODUCTION_URL, timeout=60,
                                          headers={"Authorization": f"Bearer {token}"})

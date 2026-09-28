@@ -109,19 +109,20 @@ def test_divergent_extractions_of_one_document_are_extraction_unstable_not_confl
     assert unstable.confidence < 0.98
 
 
-def test_owner_names_match_across_visura_and_atto():
+def test_historic_deed_seller_is_not_automatically_a_current_owner():
     findings = by_field(cross_validate(1, documents=[
         {"id": 1, "document_type": "visura_catastale", "extracted_fields": {"intestatari": ["ROSSI Giovanni", "BIANCHI Anna"]}},
         {"id": 2, "document_type": "atto_compravendita", "extracted_fields": {
             "parte_venditrice": ["Anna Bianchi", "Sig. Giovanni Rossi"], "parte_acquirente": ["Luca Verdi"]}},
     ], today=TODAY))
-    assert findings["proprietari"].status == "consistent"
+    assert findings["proprietari"].status == "insufficient_evidence"
+    assert findings["titolarita.ambito"].status == "attention"
 
 
-def test_seller_not_on_visura_is_a_conflict():
+def test_owner_comparison_retains_all_named_intestatari():
     findings = by_field(cross_validate(1, documents=[
         {"id": 1, "extracted_fields": {"intestatari": ["Rossi Giovanni"]}},
-        {"id": 2, "extracted_fields": {"parte_venditrice": ["Rossi Giovanni", "Rossi Maria"]}},
+        {"id": 2, "extracted_fields": {"intestatari": ["Rossi Giovanni", "Rossi Maria"]}},
     ], today=TODAY))
     assert findings["proprietari"].status == "conflict"
     assert "Maria" in findings["proprietari"].detail
@@ -141,7 +142,8 @@ def test_implausible_utile_vs_commerciale_ratio_is_flagged():
     findings = by_field(cross_validate(1, facts=[
         fact("superficie_dichiarata_mq", 92, doc=1), fact("superficie_utile_mq", 40, doc=2),
     ], today=TODAY))
-    assert findings["superficie.rapporto"].status == "conflict"
+    # Different measures and accessory areas do not prove a contradiction.
+    assert findings["superficie.rapporto"].status == "attention"
 
 
 def test_price_mismatch_between_preliminare_and_atto():
@@ -149,7 +151,8 @@ def test_price_mismatch_between_preliminare_and_atto():
         {"id": 1, "extracted_fields": {"prezzo_eur": {"valore": "€ 320.000,00", "confidence": 0.9}}},
         {"id": 2, "extracted_fields": {"prezzo_eur": {"valore": "310.000", "confidence": 0.9}}},
     ], today=TODAY))
-    assert findings["prezzo_eur"].status == "conflict"
+    # Without the same transaction/price basis this is a reconciliation task.
+    assert findings["prezzo_eur"].status == "attention"
     assert findings["prezzo_eur"].severity == "high"
 
 

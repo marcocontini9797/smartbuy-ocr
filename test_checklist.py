@@ -45,13 +45,14 @@ def test_seizure_on_visura_ipotecaria_is_a_problem_and_blocks_the_verdict():
 
 
 def test_conflict_between_documents_marks_both_documents():
-    atto = doc(3, "atto_di_provenienza", {"avente_causa": ["Bianchi Anna"], "tipo_provenienza": "compravendita"})
+    atto = doc(3, "atto_di_provenienza", {"avente_causa": ["Bianchi Anna"], "tipo_provenienza": "compravendita",
+                "riferimenti_catastali": [VISURA["extracted_fields"]["riferimento"]]})
     documents = [VISURA, atto]
     findings = cross_validate(1, documents=documents, today=TODAY)
     result = build_checklist(property_record=PROPERTY, documents=documents, findings=findings, today=TODAY)
-    assert items(result)["visura_catastale"]["status"] == "problem"
-    assert items(result)["atto_di_provenienza"]["status"] == "problem"
-    assert any("Proprietari" in issue["title"] for issue in items(result)["atto_di_provenienza"]["issues"])
+    assert items(result)["visura_catastale"]["status"] == "to_check"
+    assert items(result)["atto_di_provenienza"]["status"] == "to_check"
+    assert any(issue.get("rule_id") == "party_roles" for issue in items(result)["atto_di_provenienza"]["issues"])
 
 
 def test_expired_ape_is_a_problem_of_the_ape():

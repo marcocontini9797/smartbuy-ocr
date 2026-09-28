@@ -20,7 +20,7 @@ Convenzioni comuni:
 from __future__ import annotations
 
 from enum import Enum
-from typing import ClassVar, Optional
+from typing import ClassVar, Optional, Literal
 
 from pydantic import BaseModel, Field
 
@@ -97,6 +97,49 @@ class RiferimentoCatastale(BaseModel):
     consistenza: Optional[str] = None  # es. "5,5 vani" oppure mq per categorie diverse da A
     rendita_catastale_eur: Optional[float] = None
     indirizzo: Optional[str] = None
+    ruolo_unita: Optional[Literal["principale", "pertinenza"]] = Field(default=None,
+        description="Solo se esplicitamente indicato per questa unità nel documento. Non dedurre il ruolo dalla categoria catastale: C/2 non significa automaticamente pertinenza.")
+
+
+class TitolaritaEstratta(BaseModel):
+    """Una riga per soggetto, diritto e unità: non aggregare diritti diversi."""
+    soggetto: Optional[str] = None
+    diritto: Optional[Literal["proprieta", "nuda_proprieta", "usufrutto", "uso", "abitazione", "superficie", "altro"]] = None
+    quota: Optional[str] = Field(default=None, description="Frazione o percentuale riportata, es. 1/2 o 50%. Non dedurre quote mancanti.")
+    riferimento: Optional[RiferimentoCatastale] = None
+    fonte: Optional[str] = None
+    confidence: Optional[float] = Field(default=None, ge=0, le=1)
+
+
+class FormalitaEstratta(BaseModel):
+    identificativo: Optional[str] = Field(default=None, description="Identità completa della nota: ufficio, anno, registro e numero, solo quanto esplicito. Non usare il solo numero se ambiguo.")
+    tipo: Optional[str] = None
+    stato: Optional[Literal["attiva", "cancellata", "cancellazione_parziale", "cancellazione_richiesta", "non_determinabile"]] = Field(default=None,
+        description="Solo stato esplicitamente documentato; mutuo estinto o impegno a cancellare non equivalgono a cancellazione.")
+    data_riferimento: Optional[str] = None
+    riferimento: Optional[RiferimentoCatastale] = None
+    fonte: Optional[str] = None
+    confidence: Optional[float] = Field(default=None, ge=0, le=1)
+
+
+class CondizioneContrattuale(BaseModel):
+    identificativo: Optional[str] = None
+    descrizione: Optional[str] = None
+    stato: Optional[Literal["pendente", "avverata", "non_avverata", "rinunciata", "non_determinabile"]] = Field(default=None,
+        description="Solo esito attestato nel documento, mai dedotto dal trascorrere del tempo o dalla formula della condizione.")
+    data_scadenza: Optional[str] = None
+    fonte: Optional[str] = None
+    confidence: Optional[float] = Field(default=None, ge=0, le=1)
+
+
+class CollegamentoOperazione(BaseModel):
+    riferimento: Optional[str] = Field(default=None,
+        description="Estremi completi dell’operazione/preliminare richiamato esplicitamente: includere ufficio/registro/numero quando riportati. Non inventare un collegamento da stesso immobile, parti o prezzo.")
+    data: Optional[str] = Field(default=None, description="Data dell’operazione/preliminare identificato dal riferimento, non la data del documento che lo richiama.")
+    stato_documento: Optional[Literal["bozza", "sottoscritto", "non_determinabile"]] = Field(default=None,
+        description="Stato di QUESTO documento, solo se ricavabile dal testo o dalle firme; il titolo 'atto' non basta.")
+    fonte: Optional[str] = None
+    confidence: Optional[float] = Field(default=None, ge=0, le=1)
 
 
 class AttoCompravendita(BaseModel):
@@ -111,6 +154,9 @@ class AttoCompravendita(BaseModel):
     )
 
     tipo_documento: TipoDocumento = TipoDocumento.ATTO_COMPRAVENDITA
+    collegamento_operazione: Optional[CollegamentoOperazione] = None
+    condizioni_dettaglio: list[CondizioneContrattuale] = Field(default_factory=list,
+        description="Esiti di condizioni del preliminare, solo se espressamente richiamati con identificativo e citazione. Non dedurre l’avveramento dalla presenza dell’atto definitivo.")
     data_atto: Optional[str] = Field(default=None, description="Formato ISO YYYY-MM-DD se ricavabile")
     notaio: Optional[str] = None
     parte_venditrice: list[str] = Field(default_factory=list)
@@ -182,6 +228,9 @@ class VisuraCatastale(BaseModel):
     )
 
     tipo_documento: TipoDocumento = TipoDocumento.VISURA_CATASTALE
+    titolarita: list[TitolaritaEstratta] = Field(default_factory=list)
+    elenco_titolari_completo: Optional[bool] = Field(default=None,
+        description="True solo se la fonte attesta l’elenco completo per i diritti e le unità riportati; non presumere completezza di un estratto.")
     intestatari: list[str] = Field(default_factory=list)
     codici_fiscali_intestatari: list[str] = Field(
         default_factory=list,
@@ -253,6 +302,8 @@ class ContrattoLocazione(BaseModel):
     canone_mensile_eur: Optional[CampoEstratto] = None
     durata: Optional[str] = None
     data_inizio: Optional[str] = None
+    data_fine: Optional[str] = Field(default=None, description="Termine esplicito. Non calcolarlo dalla durata né dedurre cessazione effettiva o mancato rinnovo.")
+    canone_annuo_eur: Optional[CampoEstratto] = None
     tipo_contratto: Optional[str] = Field(
         default=None, description="es. 4+4, transitorio, concordato"
     )
@@ -281,6 +332,7 @@ class VisuraIpotecaria(BaseModel):
     )
 
     tipo_documento: TipoDocumento = TipoDocumento.VISURA_IPOTECARIA
+    formalita: list[FormalitaEstratta] = Field(default_factory=list)
     soggetti: list[str] = Field(default_factory=list)
     tipo_formalita: Optional[str] = Field(
         default=None, description="es. ipoteca volontaria, pignoramento, sequestro"
@@ -291,7 +343,7 @@ class VisuraIpotecaria(BaseModel):
     riferimenti_catastali: list[RiferimentoCatastale] = Field(default_factory=list)
     formalita_ancora_attiva: Optional[bool] = Field(
         default=None,
-        description="True se non risulta una nota di cancellazione/annotazione successiva",
+        description="Stato esplicito della formalità nella fonte. None se non determinabile; non dedurre attività o cancellazione dall’assenza di una pagina o annotazione.",
     )
     note_incertezza: list[str] = Field(default_factory=list)
 
@@ -356,6 +408,8 @@ class TitoloEdilizio(BaseModel):
     numero_pratica: Optional[str] = None
     data_rilascio_o_presentazione: Optional[str] = None
     oggetto_lavori: Optional[str] = None
+    destinazione_uso: Optional[CampoEstratto] = Field(default=None,
+        description="Uso autorizzato esplicitamente dal titolo, con citazione. Non confondere uso esistente, proposto o oggetto di istanza non ancora conclusa; se ambiguo lascia None e spiega nelle note.")
     stato: Optional[str] = Field(
         default=None, description="es. rilasciato, in istruttoria, decaduto, in sanatoria"
     )
@@ -611,6 +665,8 @@ class PreliminareCompravendita(BaseModel):
     )
 
     tipo_documento: TipoDocumento = TipoDocumento.PRELIMINARE_COMPRAVENDITA
+    collegamento_operazione: Optional[CollegamentoOperazione] = None
+    condizioni_dettaglio: list[CondizioneContrattuale] = Field(default_factory=list)
     data: Optional[str] = None
     promittente_venditore: list[str] = Field(default_factory=list)
     promittente_acquirente: list[str] = Field(default_factory=list)
@@ -650,6 +706,8 @@ class RelazioneTecnicaIntegrata(BaseModel):
         default=None, description="geometra, ingegnere, architetto, perito industriale edile"
     )
     data_relazione: Optional[str] = None
+    destinazione_uso_legittima: Optional[CampoEstratto] = Field(default=None,
+        description="Destinazione d’uso che il tecnico dichiara verificata, con citazione; non ricavarla dalla sola categoria catastale.")
     riferimenti_catastali: list[RiferimentoCatastale] = Field(default_factory=list)
     conformita_catastale: Optional[bool] = Field(
         default=None,

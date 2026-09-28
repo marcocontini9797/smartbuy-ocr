@@ -41,7 +41,7 @@ def test_owner_conflict_asks_who_signs():
         doc(3, "atto_di_provenienza", {"avente_causa": ["Rossi Giovanni"], "tipo_provenienza": "compravendita"}),
     ])
     question = next(q for q in result["questions"] if "Firmeranno tutti" in q["text"])
-    assert any("Proprietari" in reason for reason in question["reasons"])
+    assert any("soggetti" in reason for reason in question["reasons"])
 
 
 def test_entries_are_deduplicated_with_all_reasons():

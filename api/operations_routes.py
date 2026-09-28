@@ -72,6 +72,9 @@ def _validation_sources(property_id: int, client):
 
 def _findings(property_id: int, client):
     property_record, facts, documents, provenance = _validation_sources(property_id, client)
+    facts = [{**f, "provenance": provenance.get(str(f.get("provenance_id"))) or f.get("provenance") or {},
+              "source_document_id": f.get("source_document_id") or
+                  (provenance.get(str(f.get("provenance_id"))) or f.get("provenance") or {}).get("document_id")} for f in facts]
     findings = cross_validate(property_id, facts=facts, documents=documents, provenance=provenance,
                               property_record=property_record)
     return property_record, documents, findings, facts
@@ -79,12 +82,12 @@ def _findings(property_id: int, client):
 
 @router.get("/properties/{property_id}/cross-validation")
 def cross_validation(property_id: int, client=Depends(user_client)):
-    property_record, documents, findings, _ = _findings(property_id, client)
+    property_record, documents, findings, facts = _findings(property_id, client)
     return {
         "property_id": property_id,
         "findings": [item.model_dump(mode="json") for item in findings],
         "summary": summarize(findings),
-        "agent_review": build_agent_review(property_id,property_record,documents,findings),
+        "agent_review": build_agent_review(property_id,property_record,documents,findings,facts),
     }
 
 

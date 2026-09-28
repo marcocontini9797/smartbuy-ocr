@@ -130,4 +130,6 @@ class CrossValidationFinding(BaseModel):
     canonical_value: str | None = None
     sources: list[str] = Field(default_factory=list)
     detail: str | None = None
-
+    rule_id: str | None = None
+    rule_version: str = "3.1"
+    scope: dict[str, str] = Field(default_factory=dict)

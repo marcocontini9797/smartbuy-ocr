@@ -88,3 +88,37 @@ def test_client_reports_pending_and_credit_errors():
 
     with pytest.raises(OpenapiError, match="Credito Openapi insufficiente"):
         fake(broke).search_address("BO", "BOLOGNA", "ZAMBONI")
+
+
+def test_sandbox_uses_its_own_token_and_never_falls_back_to_production(monkeypatch):
+    monkeypatch.setenv("OPENAPI_CATASTO_SANDBOX", "true")
+    monkeypatch.setenv("OPENAPI_CATASTO_TOKEN", "production-token")
+    monkeypatch.setenv("OPENAPI_CATASTO_SANDBOX_TOKEN", "sandbox-token")
+    client = CatastoClient()
+    try:
+        assert client.environment == "sandbox"
+        assert str(client.http.base_url) == "https://test.catasto.openapi.it"
+        assert client.http.headers["Authorization"] == "Bearer sandbox-token"
+    finally:
+        client.http.close()
+
+
+def test_sandbox_requires_a_dedicated_token(monkeypatch):
+    monkeypatch.setenv("OPENAPI_CATASTO_SANDBOX", "true")
+    monkeypatch.setenv("OPENAPI_CATASTO_TOKEN", "production-token")
+    monkeypatch.delenv("OPENAPI_CATASTO_SANDBOX_TOKEN", raising=False)
+    with pytest.raises(OpenapiError, match="OPENAPI_CATASTO_SANDBOX_TOKEN"):
+        CatastoClient()
+
+
+def test_production_uses_only_its_production_token(monkeypatch):
+    monkeypatch.setenv("OPENAPI_CATASTO_SANDBOX", "false")
+    monkeypatch.setenv("OPENAPI_CATASTO_TOKEN", "production-token")
+    monkeypatch.setenv("OPENAPI_CATASTO_SANDBOX_TOKEN", "sandbox-token")
+    client = CatastoClient()
+    try:
+        assert client.environment == "production"
+        assert str(client.http.base_url) == "https://catasto.openapi.it"
+        assert client.http.headers["Authorization"] == "Bearer production-token"
+    finally:
+        client.http.close()
