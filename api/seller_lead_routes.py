@@ -5,16 +5,17 @@ with SMARTBUY_BFF_SECRET.
 
 Public seller-lead endpoints are protected by persistent Supabase rate
 limits before any expensive geocoding, market-data or LLM work is done.
-IP addresses and emails are never stored in the rate-limit table: only
-keyed SHA-256 hashes are persisted.
+Identical reports generated in the previous 24 hours are reused.
 """
 
 from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import os
 import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 
 from fastapi import APIRouter, Header, HTTPException
@@ -81,8 +82,6 @@ def require_bff(
 
 
 def _subject_hash(value: str) -> str:
-    """Return a stable keyed hash without persisting the raw subject."""
-
     if not BFF_SECRET:
         raise HTTPException(
             status_code=503,
@@ -142,14 +141,11 @@ def _consume_rate_limit(
         raise HTTPException(
             status_code=429,
             detail="Troppe richieste. Riprova più tardi.",
-            headers={
-                "Retry-After": str(retry_after),
-            },
+            headers={"Retry-After": str(retry_after)},
         )
 
 
 def _enforce_preview_limits(client_ip: str) -> None:
-    # Normal quiz navigation can call preview several times.
     _consume_rate_limit(
         scope="seller_preview_ip_10m",
         subject=client_ip,
@@ -165,11 +161,10 @@ def _enforce_preview_limits(client_ip: str) -> None:
     )
 
 
-def _enforce_report_limits(
+def _enforce_report_request_limits(
     client_ip: str,
     email: str,
 ) -> None:
-    # Report generation is more expensive because it can invoke the LLM.
     _consume_rate_limit(
         scope="seller_report_ip_hour",
         subject=client_ip,
@@ -191,7 +186,9 @@ def _enforce_report_limits(
         limit=3,
     )
 
-    # Emergency cost ceiling across the whole public report funnel.
+
+def _enforce_report_generation_limit() -> None:
+    # Counts only reports that actually need to be regenerated.
     _consume_rate_limit(
         scope="seller_report_global_day",
         subject="smartbuy-public-report-global",
@@ -211,18 +208,104 @@ def _client_ip(
     return value[:128]
 
 
+def _normalise_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    return " ".join(value.strip().casefold().split())
+
+
+def _report_request_hash(
+    request: SellerLeadReportRequest,
+) -> str:
+    payload = request.model_dump(mode="json")
+
+    payload["email"] = str(request.email).strip().lower()
+    payload["address"] = _normalise_text(request.address)
+    payload["city"] = _normalise_text(request.city)
+    payload["typology"] = _normalise_text(request.typology)
+    payload["condition"] = _normalise_text(request.condition)
+
+    payload["documents_ready"] = sorted(
+        _normalise_text(item) or ""
+        for item in request.documents_ready
+    )
+
+    canonical = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
+
+    return _subject_hash(
+        f"seller-report:{canonical}"
+    )
+
+
+def _find_cached_report(
+    request_hash: str,
+) -> dict[str, Any] | None:
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(hours=24)
+    ).isoformat()
+
+    try:
+        response = (
+            supabase.table("seller_leads")
+            .select(
+                "estimate,complexity,proximity,report"
+            )
+            .eq("request_hash", request_hash)
+            .gte("created_at", cutoff)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        rows = response.data or []
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Report cache unavailable",
+        ) from exc
+
+    if not rows:
+        return None
+
+    row = rows[0]
+
+    if not row.get("report"):
+        return None
+
+    return {
+        "estimate": row.get("estimate"),
+        "complexity": row.get("complexity"),
+        "proximity": row.get("proximity"),
+        "report": row.get("report"),
+        "cached": True,
+    }
+
+
 def _locate(
     answers: SellerLeadAnswers,
 ) -> tuple[tuple[float, float] | None, dict[str, Any] | None]:
     if not answers.address or not answers.city:
         return None, None
 
-    location = resolve_location(answers.address, answers.city)
+    location = resolve_location(
+        answers.address,
+        answers.city,
+    )
 
     if not location:
         return None, None
 
-    return location, market_snapshot(supabase, *location)
+    return location, market_snapshot(
+        supabase,
+        *location,
+    )
 
 
 @router.post("/seller-lead/preview")
@@ -231,13 +314,12 @@ def seller_lead_preview(
     x_smartbuy_bff_token: str | None = Header(default=None),
     x_smartbuy_client_ip: str | None = Header(default=None),
 ):
-    """Return information derived from quiz answers gathered so far."""
-
     require_bff(x_smartbuy_bff_token)
 
-    client_ip = _client_ip(x_smartbuy_client_ip)
+    client_ip = _client_ip(
+        x_smartbuy_client_ip
+    )
 
-    # Important: rate-limit before geocoding or other external work.
     _enforce_preview_limits(client_ip)
 
     location, zone = _locate(answers)
@@ -246,21 +328,32 @@ def seller_lead_preview(
 
     if answers.address and answers.city and zone is None:
         reveal["location_error"] = (
-            "Indirizzo non riconosciuto in questo comune: controlla la scrittura."
+            "Indirizzo non riconosciuto in questo comune: "
+            "controlla la scrittura."
         )
 
     if zone:
-        reveal["zone_price_range"] = zone_price_range(zone)
-        reveal["territory"] = territory_snapshot(supabase, zone)
+        reveal["zone_price_range"] = zone_price_range(
+            zone
+        )
+
+        reveal["territory"] = territory_snapshot(
+            supabase,
+            zone,
+        )
 
         if location:
-            reveal["proximity"] = proximity_snapshot(*location)
+            reveal["proximity"] = proximity_snapshot(
+                *location
+            )
 
         if answers.typology:
-            reveal["typology_price_range"] = typology_price_range(
-                zone,
-                answers.typology,
-                answers.condition,
+            reveal["typology_price_range"] = (
+                typology_price_range(
+                    zone,
+                    answers.typology,
+                    answers.condition,
+                )
             )
 
     reveal["complexity"] = complexity_factors(
@@ -276,17 +369,32 @@ def seller_lead_report(
     x_smartbuy_bff_token: str | None = Header(default=None),
     x_smartbuy_client_ip: str | None = Header(default=None),
 ):
-    """Generate the final seller report and persist the lead."""
-
     require_bff(x_smartbuy_bff_token)
 
-    client_ip = _client_ip(x_smartbuy_client_ip)
+    client_ip = _client_ip(
+        x_smartbuy_client_ip
+    )
 
-    # Important: all rate limits run before geocoding and LLM generation.
-    _enforce_report_limits(
+    # Protect the public endpoint even when a cached report exists.
+    _enforce_report_request_limits(
         client_ip,
         str(request.email),
     )
+
+    request_hash = _report_request_hash(
+        request
+    )
+
+    # Reuse an identical report generated in the previous 24 hours.
+    cached = _find_cached_report(
+        request_hash
+    )
+
+    if cached:
+        return cached
+
+    # Only a genuine new generation consumes the global cost ceiling.
+    _enforce_report_generation_limit()
 
     location, zone = _locate(request)
 
@@ -340,12 +448,17 @@ def seller_lead_report(
         "complexity": complexity,
         "proximity": proximity,
         "report": report,
+        "request_hash": request_hash,
     }
 
     try:
-        supabase.table("seller_leads").insert(row).execute()
+        supabase.table(
+            "seller_leads"
+        ).insert(row).execute()
+
     except Exception:
-        # The report should still be returned if lead persistence alone fails.
+        # Report generation succeeded, so persistence alone
+        # must not prevent the user receiving the result.
         pass
 
     return {
@@ -353,4 +466,5 @@ def seller_lead_report(
         "complexity": complexity,
         "proximity": proximity,
         "report": report,
+        "cached": False,
     }
