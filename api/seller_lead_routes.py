@@ -1,16 +1,18 @@
 """Public, unauthenticated seller/buyer lead-generation quiz.
 
-Every route here is reachable with no user session because this is the
-pre-mandate funnel. Requests are accepted only when they come through the
-SmartBuy web BFF, authenticated with SMARTBUY_BFF_SECRET.
+Requests are accepted only through the SmartBuy web BFF, authenticated
+with SMARTBUY_BFF_SECRET.
 
-All Supabase access goes through the privileged backend client because
-seller_leads contains personal data and is not directly accessible to
-anon/authenticated roles.
+Public seller-lead endpoints are protected by persistent Supabase rate
+limits before any expensive geocoding, market-data or LLM work is done.
+IP addresses and emails are never stored in the rate-limit table: only
+keyed SHA-256 hashes are persisted.
 """
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
 import secrets
 from typing import Any, Literal
@@ -78,6 +80,137 @@ def require_bff(
         )
 
 
+def _subject_hash(value: str) -> str:
+    """Return a stable keyed hash without persisting the raw subject."""
+
+    if not BFF_SECRET:
+        raise HTTPException(
+            status_code=503,
+            detail="Seller lead service not configured",
+        )
+
+    return hmac.new(
+        BFF_SECRET.encode("utf-8"),
+        value.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def _consume_rate_limit(
+    *,
+    scope: str,
+    subject: str,
+    window_seconds: int,
+    limit: int,
+) -> None:
+    try:
+        response = supabase.rpc(
+            "smartbuy_consume_public_rate_limit",
+            {
+                "p_scope": scope,
+                "p_subject_hash": _subject_hash(subject),
+                "p_window_seconds": window_seconds,
+                "p_limit": limit,
+            },
+        ).execute()
+
+        result = response.data
+
+        if isinstance(result, list):
+            result = result[0] if result else None
+
+        if not isinstance(result, dict):
+            raise ValueError("Unexpected rate-limit response")
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Rate limit service unavailable",
+        ) from exc
+
+    if not bool(result.get("allowed")):
+        try:
+            retry_after = max(
+                1,
+                int(result.get("retry_after") or window_seconds),
+            )
+        except (TypeError, ValueError):
+            retry_after = window_seconds
+
+        raise HTTPException(
+            status_code=429,
+            detail="Troppe richieste. Riprova più tardi.",
+            headers={
+                "Retry-After": str(retry_after),
+            },
+        )
+
+
+def _enforce_preview_limits(client_ip: str) -> None:
+    # Normal quiz navigation can call preview several times.
+    _consume_rate_limit(
+        scope="seller_preview_ip_10m",
+        subject=client_ip,
+        window_seconds=600,
+        limit=30,
+    )
+
+    _consume_rate_limit(
+        scope="seller_preview_ip_day",
+        subject=client_ip,
+        window_seconds=86400,
+        limit=200,
+    )
+
+
+def _enforce_report_limits(
+    client_ip: str,
+    email: str,
+) -> None:
+    # Report generation is more expensive because it can invoke the LLM.
+    _consume_rate_limit(
+        scope="seller_report_ip_hour",
+        subject=client_ip,
+        window_seconds=3600,
+        limit=5,
+    )
+
+    _consume_rate_limit(
+        scope="seller_report_ip_day",
+        subject=client_ip,
+        window_seconds=86400,
+        limit=10,
+    )
+
+    _consume_rate_limit(
+        scope="seller_report_email_day",
+        subject=email.strip().lower(),
+        window_seconds=86400,
+        limit=3,
+    )
+
+    # Emergency cost ceiling across the whole public report funnel.
+    _consume_rate_limit(
+        scope="seller_report_global_day",
+        subject="smartbuy-public-report-global",
+        window_seconds=86400,
+        limit=100,
+    )
+
+
+def _client_ip(
+    x_smartbuy_client_ip: str | None,
+) -> str:
+    value = (x_smartbuy_client_ip or "unknown").strip()
+
+    if not value:
+        return "unknown"
+
+    return value[:128]
+
+
 def _locate(
     answers: SellerLeadAnswers,
 ) -> tuple[tuple[float, float] | None, dict[str, Any] | None]:
@@ -96,13 +229,16 @@ def _locate(
 def seller_lead_preview(
     answers: SellerLeadAnswers,
     x_smartbuy_bff_token: str | None = Header(default=None),
+    x_smartbuy_client_ip: str | None = Header(default=None),
 ):
-    """Return information derived from the quiz answers gathered so far.
-
-    This endpoint is stateless and does not persist a seller lead.
-    """
+    """Return information derived from quiz answers gathered so far."""
 
     require_bff(x_smartbuy_bff_token)
+
+    client_ip = _client_ip(x_smartbuy_client_ip)
+
+    # Important: rate-limit before geocoding or other external work.
+    _enforce_preview_limits(client_ip)
 
     location, zone = _locate(answers)
 
@@ -138,10 +274,19 @@ def seller_lead_preview(
 def seller_lead_report(
     request: SellerLeadReportRequest,
     x_smartbuy_bff_token: str | None = Header(default=None),
+    x_smartbuy_client_ip: str | None = Header(default=None),
 ):
     """Generate the final seller report and persist the lead."""
 
     require_bff(x_smartbuy_bff_token)
+
+    client_ip = _client_ip(x_smartbuy_client_ip)
+
+    # Important: all rate limits run before geocoding and LLM generation.
+    _enforce_report_limits(
+        client_ip,
+        str(request.email),
+    )
 
     location, zone = _locate(request)
 
@@ -200,7 +345,7 @@ def seller_lead_report(
     try:
         supabase.table("seller_leads").insert(row).execute()
     except Exception:
-        # The report should still be returned even if lead persistence fails.
+        # The report should still be returned if lead persistence alone fails.
         pass
 
     return {
