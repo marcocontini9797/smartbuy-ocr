@@ -55,8 +55,34 @@ def test_cross_validation_conflict_blocks_intelligence_readiness():
         },
     ]
     documents = [
-        {"id": 101, "document_type": "visura_catastale", "processing_status": "completed", "extracted_fields": {}},
-        {"id": 102, "document_type": "visura_catastale", "processing_status": "completed", "extracted_fields": {}},
+        {
+            "id": 101,
+            "document_type": "visura_catastale",
+            "processing_status": "completed",
+            "extracted_fields": {
+                "riferimento": {
+                    "comune": "Bologna",
+                    "foglio": "123",
+                    "particella": "456",
+                    "subalterno": "7",
+                    "categoria": "A/3",
+                }
+            },
+        },
+        {
+            "id": 102,
+            "document_type": "visura_catastale",
+            "processing_status": "completed",
+            "extracted_fields": {
+                "riferimento": {
+                    "comune": "Bologna",
+                    "foglio": "123",
+                    "particella": "456",
+                    "subalterno": "7",
+                    "categoria": "A/2",
+                }
+            },
+        },
     ]
     result = build_property_intelligence(
         property_record={"id": 9, "address": "Via Giuseppe Verdi 10", "city": "Bologna"},
