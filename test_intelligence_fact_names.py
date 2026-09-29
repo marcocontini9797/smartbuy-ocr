@@ -31,3 +31,43 @@ def test_missing_information_is_a_gap_not_a_risk():
     assert result["summary"]["missing_items"] == len(result["gaps"]) > 0
     energy = next(g for g in result["gaps"] if g["area"] == "energy")
     assert energy["title"] == "Dati energetici da raccogliere" and energy["action"] == "Carica l'APE"
+
+
+def test_cross_validation_conflict_blocks_intelligence_readiness():
+    facts = [
+        {
+            "id": "f1",
+            "fact_name": "riferimento",
+            "fact_value": {"value": {"comune": "Bologna", "foglio": "123", "particella": "456", "subalterno": "7", "categoria": "A/3"}},
+            "source_type": "document",
+            "source_document_id": 101,
+            "confidence_score": 0.99,
+            "verification_status": "unverified",
+        },
+        {
+            "id": "f2",
+            "fact_name": "riferimento",
+            "fact_value": {"value": {"comune": "Bologna", "foglio": "123", "particella": "456", "subalterno": "7", "categoria": "A/2"}},
+            "source_type": "document",
+            "source_document_id": 102,
+            "confidence_score": 0.99,
+            "verification_status": "unverified",
+        },
+    ]
+    documents = [
+        {"id": 101, "document_type": "visura_catastale", "processing_status": "completed", "extracted_fields": {}},
+        {"id": 102, "document_type": "visura_catastale", "processing_status": "completed", "extracted_fields": {}},
+    ]
+    result = build_property_intelligence(
+        property_record={"id": 9, "address": "Via Giuseppe Verdi 10", "city": "Bologna"},
+        facts=facts,
+        documents=documents,
+        analyses=[{"id": 1}, {"id": 2}],
+        provenance=[],
+    )
+
+    assert result["summary"]["readiness_level"] != "ready"
+    assert result["summary"]["open_risks"] >= 1
+    risk = next(item for item in result["risks"] if item["category"] == "factual_discrepancy")
+    assert risk["severity"] == "high"
+    assert "catasto.categoria" in risk["title"]
