@@ -171,9 +171,11 @@ try:
             headers=headers_b,
         )
 
+        list_payload = b_list.json() if b_list.status_code == 200 else {}
         listed_ids = {
             str(row.get("id"))
-            for row in (b_list.json() if b_list.status_code == 200 else [])
+            for row in (list_payload.get("items", []) if isinstance(list_payload, dict) else [])
+            if isinstance(row, dict)
         }
         check(b_list.status_code == 200 and str(property_id) not in listed_ids, "B non vede la property di A nella lista")
         check(b_property.status_code == 404, "B non può aprire la property di A")
