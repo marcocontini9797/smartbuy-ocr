@@ -11,7 +11,8 @@ from typing import Any
 from smartbuy.document_facts_loader import load_document_facts_into_profile
 from smartbuy.profile import PropertyIntelligenceProfile
 from smartbuy.risk import RiskEnginePOC
-from document_engine.cross_validation import HUMAN_VERIFIED, effective_facts
+from smartbuy.validation import ValidationReport
+from document_engine.cross_validation import HUMAN_VERIFIED, effective_facts, cross_validate
 
 
 def _model(value: Any) -> Any:
@@ -43,6 +44,47 @@ def _profile_facts(facts: list[dict]) -> list[dict]:
             value = {**value, "value": value["value"][0]}
         rows.append({**row, "fact_name": name, "fact_value": value})
     return rows
+
+
+def _cross_validation_report(
+    *,
+    property_record: dict,
+    facts: list[dict],
+    documents: list[dict],
+    provenance: list[dict],
+) -> ValidationReport:
+    """Bridge the deterministic cross-validator into the existing RiskEngine contract."""
+    property_id = property_record["id"]
+    provenance_by_id = {str(row.get("id")): row for row in provenance if row.get("id") is not None}
+    linked_facts = [
+        {
+            **row,
+            "provenance": provenance_by_id.get(str(row.get("provenance_id"))) or row.get("provenance") or {},
+            "source_document_id": row.get("source_document_id")
+            or (provenance_by_id.get(str(row.get("provenance_id"))) or row.get("provenance") or {}).get("document_id"),
+        }
+        for row in facts
+    ]
+    findings = cross_validate(
+        property_id,
+        facts=linked_facts,
+        documents=documents,
+        provenance=provenance_by_id,
+        property_record=property_record,
+    )
+    conflicts = [item for item in findings if item.status == "conflict"]
+    unresolved = list(dict.fromkeys(item.field for item in conflicts))
+    discrepancies = [
+        item.detail or f"Conflicting evidence for '{item.field}'"
+        for item in conflicts
+    ]
+    return ValidationReport(
+        property_id=str(property_id),
+        verified_at=datetime.now(timezone.utc).isoformat(),
+        discrepancies=discrepancies,
+        unresolved_conflicts=unresolved,
+        notes="Built from document_engine.cross_validation deterministic findings.",
+    )
 
 
 # The risk engine reports "information not collected" as open risks. For the
@@ -149,7 +191,13 @@ def build_property_intelligence(
         updated_at=datetime.now(timezone.utc).isoformat(),
     )
     profile = load_document_facts_into_profile(profile, _profile_facts(facts))
-    report = RiskEnginePOC().assess(profile)
+    validation_report = _cross_validation_report(
+        property_record=property_record,
+        facts=facts,
+        documents=documents,
+        provenance=provenance,
+    )
+    report = RiskEnginePOC().assess(profile, validation_report=validation_report)
 
     provenance_by_id = {str(row.get("id")): row for row in provenance if row.get("id") is not None}
     document_by_id = {str(row.get("id")): row for row in documents if row.get("id") is not None}
