@@ -89,8 +89,8 @@ def test_backfill_indexes_only_missing_current_documents(monkeypatch):
         "document_chunks": [{"document_id": 1}],
         "document_text_extractions": [{"document_id": 1, "raw_text": "x"}, {"document_id": 2, "raw_text": "y"},
                                       {"document_id": 3, "raw_text": "z"}],
-        "documents": [{"id": 2, "property_id": 9, "superseded_by": None},
-                      {"id": 3, "property_id": 9, "superseded_by": 2}],
+        "documents": [{"id": 2, "superseded_by": None}, {"id": 3, "superseded_by": 2}],
+        "document_analyses": [{"document_id": 2, "property_id": 9}, {"document_id": 3, "property_id": 9}],
     })
     assert rag_service.backfill_missing(client) == {"indexed": 1, "skipped": 1}
     assert indexed == [2]

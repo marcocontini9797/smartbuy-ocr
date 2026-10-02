@@ -13,5 +13,5 @@ from document_engine.rag_service import backfill_missing
 
 load_dotenv(".env")
 
-client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SECRET_KEY"])
+client = create_client(os.environ["SUPABASE_URL"], os.environ.get("SUPABASE_SECRET_KEY") or os.environ["SUPABASE_SERVICE_ROLE_KEY"])
 print(backfill_missing(client, limit=int(sys.argv[1]) if len(sys.argv) > 1 else 200))

@@ -51,13 +51,18 @@ def backfill_missing(client, *, limit: int = 200) -> dict[str, int]:
             continue
         if done + skipped >= limit:
             break
-        docs = (client.table("documents").select("id,property_id,file_name,document_type,extracted_fields,superseded_by")
+        docs = (client.table("documents").select("id,file_name,document_type,extracted_fields,superseded_by")
                 .eq("id", row["document_id"]).limit(1).execute().data or [])
         if not docs or docs[0].get("superseded_by") is not None:
             skipped += 1
             continue
         doc = docs[0]
-        stored = index_uploaded_document(client, property_id=doc["property_id"], document=doc,
+        links = (client.table("document_analyses").select("property_id")
+                 .eq("document_id", doc["id"]).limit(1).execute().data or [])
+        if not links:
+            skipped += 1
+            continue
+        stored = index_uploaded_document(client, property_id=links[0]["property_id"], document=doc,
                                          ocr_text=row["raw_text"], extracted_fields=doc.get("extracted_fields"))
         done += 1 if stored else 0
         skipped += 0 if stored else 1
