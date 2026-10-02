@@ -64,7 +64,7 @@ def test_complete_flow_persists_facts_all_stages_and_one_evidence(harness):
 
 def test_fact_write_failure_marks_run_and_document_failed(harness,monkeypatch):
     client,saved,stages,facts,run=harness
-    def fail(*a,**k): raise HTTPException(502,"Unable to persist extracted facts")
+    def fail(*a,**k): raise HTTPException(502,"I dati letti dal documento non sono stati salvati: riprova a caricarlo.")
     monkeypatch.setattr(routes,"persist_document_facts",fail)
     with pytest.raises(HTTPException): run()
     runs=[p for t,p in stages if t=="smartbuy_analysis_runs"]

@@ -30,7 +30,7 @@ def _insert_one(client, table: str, payload: dict) -> dict:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(502, f"Unable to persist {table}") from exc
+        raise HTTPException(502, f"Non è stato possibile salvare i dati ({table}): riprova.") from exc
 
 
 def _best_effort_insert(client, table: str, payload: dict) -> None:
@@ -98,7 +98,7 @@ def persist_document_facts(client, *, property_id: int, document: dict, analysis
         client.table("fact_provenance").insert(provenance_rows).execute()
         client.table("property_facts").insert(fact_rows).execute()
     except Exception as exc:
-        raise HTTPException(502, "Unable to persist extracted facts") from exc
+        raise HTTPException(502, "I dati letti dal documento non sono stati salvati: riprova a caricarlo.") from exc
     return len(fact_rows)
 
 
@@ -251,18 +251,18 @@ def open_original(property_id: int, document_id: int, client=Depends(user_client
         linked = client.table("document_analyses").select("document_id").eq("property_id", property_id)             .eq("document_id", str(document_id)).limit(1).execute().data
         rows = client.table("documents").select("storage_path,file_name").eq("id", document_id).limit(1).execute().data
     except Exception as exc:
-        raise HTTPException(502, "Document service unavailable") from exc
+        raise HTTPException(502, "Non riesco a leggere i documenti in questo momento: riprova tra poco.") from exc
     if not linked or not rows:
-        raise HTTPException(404, "Document not found")
+        raise HTTPException(404, "Documento non trovato.")
     if not rows[0].get("storage_path"):
-        raise HTTPException(404, "The original file was not stored for this document")
+        raise HTTPException(404, "Il file originale di questo documento non è stato conservato.")
     try:
         signed = client.storage.from_(DOCUMENT_BUCKET).create_signed_url(rows[0]["storage_path"], 300)
     except Exception as exc:
-        raise HTTPException(502, "Unable to open the original file") from exc
+        raise HTTPException(502, "Non riesco ad aprire il file originale.") from exc
     url = signed.get("signedURL") or signed.get("signedUrl") or signed.get("signed_url")
     if not url:
-        raise HTTPException(502, "Unable to open the original file")
+        raise HTTPException(502, "Non riesco ad aprire il file originale.")
     return {"url": url, "file_name": rows[0].get("file_name"), "expires_in": 300}
 
 
@@ -282,7 +282,7 @@ def supersede_document(property_id: int, document_id: int, body: SupersedeReques
     try:
         rows = client.table("documents").select(_SUPERSEDE_COLUMNS).eq("fascicolo_id", str(property_id))             .in_("id", [document_id, body.replaced_by]).execute().data or []
     except Exception as exc:
-        raise HTTPException(502, "Document service unavailable") from exc
+        raise HTTPException(502, "Non riesco a leggere i documenti in questo momento: riprova tra poco.") from exc
     by_id = {str(row["id"]): row for row in rows}
     try:
         validate_supersede(by_id.get(str(document_id)), by_id.get(str(body.replaced_by)))
@@ -339,7 +339,7 @@ async def analyze_property_document(
     try:
         duplicate = client.table("documents").select("id,file_name").eq("fascicolo_id", str(property_id))             .eq("content_sha256", intake.checksum_sha256).limit(1).execute().data
     except Exception as exc:
-        raise HTTPException(502, "Document service unavailable") from exc
+        raise HTTPException(502, "Non riesco a leggere i documenti in questo momento: riprova tra poco.") from exc
     if duplicate:
         raise HTTPException(409, f"Questo file è già stato caricato per questo immobile ({duplicate[0].get('file_name')}).")
 
@@ -360,7 +360,7 @@ async def analyze_property_document(
             # provider is not configured.
             from api_server import ingest_document as legacy_ingest
         except (ImportError, ValueError) as exc:
-            raise HTTPException(503, "Document AI is not configured") from exc
+            raise HTTPException(503, "L'analisi dei documenti non è configurata su questo server.") from exc
 
         await file.seek(0)
         result = await legacy_ingest(

@@ -67,7 +67,7 @@ def _record(client, row: dict) -> dict:
     try:
         return client.table("property_registry_checks").insert(row).execute().data[0]
     except Exception as exc:
-        raise HTTPException(502, "Unable to record the registry request") from exc
+        raise HTTPException(502, "Non è stato possibile registrare la richiesta al registro: riprova.") from exc
 
 
 def _update(client, check_id: str, changes: dict) -> None:
@@ -158,7 +158,7 @@ def confirm_delega(property_id: int, payload: DelegaConfirmation, client=Depends
     try:
         response = client.table("properties").update({"delega_confirmed_at": value}).eq("id", property_id).execute()
     except Exception as exc:
-        raise HTTPException(502, "Unable to update the delega") from exc
+        raise HTTPException(502, "Non è stato possibile aggiornare la delega: riprova.") from exc
     return {"delega_confirmed_at": (response.data or [{}])[0].get("delega_confirmed_at")}
 
 
@@ -179,7 +179,7 @@ def track_planimetria_delega(property_id: int, payload: PlanimetriaDelegaTrackin
     try:
         response = client.table("properties").update({"planimetria_delega_sent_at": value}).eq("id", property_id).execute()
     except Exception as exc:
-        raise HTTPException(502, "Unable to update the planimetria delega tracking") from exc
+        raise HTTPException(502, "Non è stato possibile aggiornare la delega per la planimetria: riprova.") from exc
     return {"planimetria_delega_sent_at": (response.data or [{}])[0].get("planimetria_delega_sent_at")}
 
 

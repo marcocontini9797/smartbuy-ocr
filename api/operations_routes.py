@@ -67,7 +67,7 @@ def _validation_sources(property_id: int, client):
         documents = client.table("documents").select("*").in_("id", document_ids).execute().data or [] if document_ids else []
         provenance = client.table("fact_provenance").select("*").in_("id", provenance_ids).execute().data or [] if provenance_ids else []
     except Exception as exc:
-        raise HTTPException(502, "Cross-validation sources unavailable") from exc
+        raise HTTPException(502, "Non riesco a leggere i dati per le verifiche incrociate: riprova tra poco.") from exc
     documents, facts = drop_superseded(documents, facts)
     return property_record, facts, documents, {str(row["id"]): row for row in provenance}
 
@@ -115,7 +115,7 @@ def acquisition_plan(property_id: int, client=Depends(user_client)):
     try:
         documents = client.table("documents").select("*").in_("id", document_ids).execute().data or [] if document_ids else []
     except Exception as exc:
-        raise HTTPException(502, "Document service unavailable") from exc
+        raise HTTPException(502, "Non riesco a leggere i documenti in questo momento: riprova tra poco.") from exc
     documents, facts = drop_superseded(documents, _rows(client, "property_facts", property_id))
     return build_acquisition_plan(
         property_record=prop,
@@ -149,7 +149,7 @@ def _document_packages_plan(property_id: int, client) -> tuple[dict, dict]:
     try:
         documents = client.table("documents").select("*").in_("id", ids).execute().data or [] if ids else []
     except Exception as exc:
-        raise HTTPException(502, "Document service unavailable") from exc
+        raise HTTPException(502, "Non riesco a leggere i documenti in questo momento: riprova tra poco.") from exc
     plan = build_document_packages(prop, current_documents(documents), _rows(client, "smartbuy_document_requests", property_id))
     return plan, prop
 
@@ -170,7 +170,7 @@ def prepare_document_packages(property_id: int, client=Depends(user_client)):
     try:
         result = persist_request_drafts(client, plan)
     except Exception as exc:
-        raise HTTPException(502, "Unable to persist document requests; retry safely") from exc
+        raise HTTPException(502, "Le richieste non sono state salvate: puoi riprovare senza rischi.") from exc
     plan, _ = _document_packages_plan(property_id, client)
     plan, to_persist = apply_request_messages(
         plan, prop, _optional_rows(client, "smartbuy_request_messages", property_id), generate=True)
@@ -181,3 +181,53 @@ def prepare_document_packages(property_id: int, client=Depends(user_client)):
         except Exception:
             pass  # composed letters still returned in `plan`; just not cached for next time
     return {**result, "plan": plan}
+
+
+@router.get("/properties-overview")
+def properties_overview(client=Depends(user_client)):
+    """One line of status per property, for the list: how many documents, what is missing, what is wrong.
+
+    Read in bulk (three queries for the whole portfolio, not three per property) and computed with the same
+    checklist engine as the detail page, so the list never disagrees with the property it links to.
+    Cross-validation findings are left out (they need provenance reads per property); the detail page adds them."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    try:
+        properties = (client.table("properties").select("*").eq("user_id", client.smartbuy_user_id)
+                      .order("id", desc=True).limit(200).execute().data or [])
+    except Exception as exc:
+        raise HTTPException(502, "Non riesco a leggere i dati in questo momento: riprova tra poco.") from exc
+    ids = [p["id"] for p in properties]
+    if not ids:
+        return {"items": []}
+
+    def read(table: str) -> list[dict]:
+        try:
+            return client.table(table).select("*").in_("property_id", ids).execute().data or []
+        except Exception:
+            return []
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        analyses_f, facts_f = pool.submit(read, "document_analyses"), pool.submit(read, "property_facts")
+        analyses, facts = analyses_f.result(), facts_f.result()
+    document_ids = list({row["document_id"] for row in analyses if row.get("document_id") is not None})
+    try:
+        documents = client.table("documents").select("*").in_("id", document_ids).execute().data or [] if document_ids else []
+    except Exception as exc:
+        raise HTTPException(502, "Non riesco a leggere i documenti in questo momento: riprova tra poco.") from exc
+    by_id = {str(d["id"]): d for d in documents}
+
+    items = []
+    for prop in properties:
+        mine = {str(a["document_id"]) for a in analyses if str(a.get("property_id")) == str(prop["id"]) and a.get("document_id") is not None}
+        prop_docs, prop_facts = drop_superseded([by_id[i] for i in mine if i in by_id],
+                                                [f for f in facts if str(f.get("property_id")) == str(prop["id"])])
+        try:
+            summary = build_checklist(property_record=prop, documents=prop_docs, findings=[], facts=prop_facts)["summary"]
+        except Exception:
+            items.append({"property_id": prop["id"], "documents": len(prop_docs), "status": None})
+            continue
+        items.append({"property_id": prop["id"], "documents": len(prop_docs), "required_total": summary["required_total"],
+                      "required_present": summary["required_present"], "missing_required": summary["missing_required"],
+                      "problems": summary["problems"], "to_check": summary["to_check"], "tone": summary["tone"]})
+    return {"items": items}

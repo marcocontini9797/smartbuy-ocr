@@ -54,4 +54,4 @@ def submit_feedback(request: UserFeedbackRequest, client=Depends(user_client)):
     except FeedbackConflictError as exc:
         raise HTTPException(409, str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(503, "Feedback persistence is not configured") from exc
+        raise HTTPException(503, "Il salvataggio del feedback non è disponibile al momento.") from exc

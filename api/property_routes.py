@@ -37,7 +37,7 @@ def _rows(client, table: str, property_id: int) -> list[dict]:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Data service unavailable") from exc
+        raise HTTPException(status_code=502, detail="Non riesco a leggere i dati in questo momento: riprova tra poco.") from exc
 
 
 def _optional_rows(client, table: str, property_id: int) -> list[dict]:
@@ -81,9 +81,9 @@ def create_property(payload: NewProperty, client=Depends(user_client)):
     try:
         response = client.table("properties").insert({**data, "user_id": client.smartbuy_user_id}).execute()
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Unable to create the property") from exc
+        raise HTTPException(status_code=502, detail="Non è stato possibile creare l'immobile: riprova.") from exc
     if not response.data:
-        raise HTTPException(status_code=502, detail="Unable to create the property")
+        raise HTTPException(status_code=502, detail="Non è stato possibile creare l'immobile: riprova.")
     return response.data[0]
 
 
@@ -111,14 +111,14 @@ def update_property(property_id: int, payload: PropertyUpdate, client=Depends(us
     if "workflow_context" in changes:
         changes["workflow_context"] = {**(current.get("workflow_context") or {}), **(changes["workflow_context"] or {})}
     if not changes:
-        raise HTTPException(status_code=400, detail="Nothing to update")
+        raise HTTPException(status_code=400, detail="Nessuna modifica indicata.")
     if changes.get("fiaip_zone") == "":
         changes["fiaip_zone"] = None  # "non indicata" in the picker
     changes = _with_asset_class(changes)
     try:
         response = client.table("properties").update(changes).eq("id", property_id).execute()
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Unable to update the property") from exc
+        raise HTTPException(status_code=502, detail="Non è stato possibile salvare le modifiche all'immobile: riprova.") from exc
     return response.data[0] if response.data else get_property(property_id, client)
 
 
@@ -129,7 +129,7 @@ def delete_property(property_id: int, client=Depends(user_client)):
     try:
         result = client.rpc("smartbuy_delete_property", {"p_property_id": property_id}).execute().data or {}
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Unable to delete the property") from exc
+        raise HTTPException(status_code=502, detail="Non è stato possibile eliminare l'immobile: riprova.") from exc
     paths = result.get("storage_paths") or []
     files_removed = True
     if paths:
@@ -169,7 +169,7 @@ def _zone(client, property_record: dict) -> dict | None:
         return client.rpc("smartbuy_omi_zone_quotes", {"p_lat": float(property_record["latitude"]),
                                                        "p_lon": float(property_record["longitude"])}).execute().data
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="OMI data unavailable") from exc
+        raise HTTPException(status_code=502, detail="I dati OMI non sono disponibili al momento.") from exc
 
 
 def _current_facts(client, property_id: int) -> list[dict]:
@@ -350,7 +350,7 @@ def add_comparable(property_id: int, payload: NewComparable, client=Depends(user
         response = client.table("property_comparables").insert(
             {**payload.model_dump(exclude_none=True), "property_id": property_id}).execute()
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Unable to save the comparable") from exc
+        raise HTTPException(status_code=502, detail="Non è stato possibile salvare il comparabile: riprova.") from exc
     return response.data[0]
 
 
@@ -361,9 +361,9 @@ def delete_comparable(property_id: int, comparable_id: str, client=Depends(user_
         response = (client.table("property_comparables").delete().eq("id", comparable_id)
                     .eq("property_id", property_id).execute())
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Unable to delete the comparable") from exc
+        raise HTTPException(status_code=502, detail="Non è stato possibile eliminare il comparabile: riprova.") from exc
     if not response.data:
-        raise HTTPException(status_code=404, detail="Comparable not found")
+        raise HTTPException(status_code=404, detail="Comparabile non trovato.")
     return {"deleted": True}
 
 
@@ -386,7 +386,7 @@ def record_sale(property_id: int, payload: SaleOutcome, client=Depends(user_clie
     try:
         response = client.table("valuation_outcomes").upsert(row, on_conflict="property_id").execute()
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Unable to save the sale") from exc
+        raise HTTPException(status_code=502, detail="Non è stato possibile salvare la vendita: riprova.") from exc
     return response.data[0] if response.data else row
 
 
@@ -396,7 +396,7 @@ def delete_sale(property_id: int, client=Depends(user_client)):
     try:
         client.table("valuation_outcomes").delete().eq("property_id", property_id).execute()
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Unable to delete the sale") from exc
+        raise HTTPException(status_code=502, detail="Non è stato possibile eliminare la vendita: riprova.") from exc
     return {"deleted": True}
 
 
@@ -408,7 +408,7 @@ def list_properties(limit: int = Query(100, ge=1, le=500), client=Depends(user_c
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Data service unavailable") from exc
+        raise HTTPException(status_code=502, detail="Non riesco a leggere i dati in questo momento: riprova tra poco.") from exc
 
 
 @router.get("/properties/{property_id}")
@@ -416,12 +416,12 @@ def get_property(property_id: int, client=Depends(user_client)):
     try:
         response = client.table("properties").select("*").eq("id", property_id).eq("user_id", client.smartbuy_user_id).limit(1).execute()
         if not response.data:
-            raise HTTPException(status_code=404, detail="Property not found")
+            raise HTTPException(status_code=404, detail="Immobile non trovato.")
         return response.data[0]
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=502, detail="Data service unavailable") from exc
+        raise HTTPException(status_code=502, detail="Non riesco a leggere i dati in questo momento: riprova tra poco.") from exc
 
 
 @router.get("/properties/{property_id}/workspace")
@@ -442,7 +442,7 @@ def get_property_workspace(property_id: int, client=Depends(user_client)):
         try:
             documents = (client.table("documents").select("*").in_("id", document_ids).execute().data or []) if document_ids else []
         except Exception as exc:
-            raise HTTPException(502, "Document service unavailable") from exc
+            raise HTTPException(502, "Non riesco a leggere i documenti in questo momento: riprova tra poco.") from exc
         facts = current_facts(facts_f.result(), documents)
         evidence, issues, runs = evidence_f.result(), issues_f.result(), runs_f.result()
         operational_evidence, document_requests = op_evidence_f.result(), requests_f.result()
@@ -479,7 +479,7 @@ def get_property_intelligence(property_id: int, client=Depends(user_client)):
         provenance_ids = list({row["provenance_id"] for row in facts if row.get("provenance_id") is not None})
         provenance = client.table("fact_provenance").select("*").in_("id", provenance_ids).execute().data or [] if provenance_ids else []
     except Exception as exc:
-        raise HTTPException(502, "Intelligence lineage unavailable") from exc
+        raise HTTPException(502, "L'analisi del fascicolo non è disponibile al momento: riprova tra poco.") from exc
     documents, facts = drop_superseded(documents, facts)
     return build_property_intelligence(
         property_record=property_record,
@@ -503,7 +503,7 @@ def enable_share(property_id: int, client=Depends(user_client)):
     try:
         response = client.table("properties").update({"share_token": token, "share_enabled": True}).eq("id", property_id).execute()
     except Exception as exc:
-        raise HTTPException(502, "Unable to enable sharing") from exc
+        raise HTTPException(502, "Non è stato possibile attivare la condivisione: riprova.") from exc
     row = (response.data or [{}])[0]
     return {"share_token": row.get("share_token"), "share_enabled": row.get("share_enabled")}
 
@@ -516,6 +516,6 @@ def disable_share(property_id: int, client=Depends(user_client)):
     try:
         client.table("properties").update({"share_token": None, "share_enabled": False}).eq("id", property_id).execute()
     except Exception as exc:
-        raise HTTPException(502, "Unable to disable sharing") from exc
+        raise HTTPException(502, "Non è stato possibile disattivare la condivisione: riprova.") from exc
     return {"share_token": None, "share_enabled": False}
 

@@ -39,18 +39,18 @@ def _verified_user(client, token: str) -> str:
 
 def user_client(authorization: str | None = Header(default=None)):
     if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(401, "Sign in to access your properties")
+        raise HTTPException(401, "Accedi per vedere i tuoi immobili.")
 
     url, key = os.getenv("SUPABASE_URL"), _public_key()
     if not url or not key:
-        raise HTTPException(503, "Authentication is not configured")
+        raise HTTPException(503, "Il servizio di accesso non è configurato.")
 
     client = create_client(url, key)
     token = authorization[7:]
     try:
         user_id = _verified_user(client, token)
     except Exception:
-        raise HTTPException(401, "Session invalid or expired")
+        raise HTTPException(401, "La sessione è scaduta: accedi di nuovo.")
 
     client.postgrest.auth(token)
     # Storage is built lazily from these headers: it must act as the user too.
