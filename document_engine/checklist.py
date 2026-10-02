@@ -173,6 +173,18 @@ BOX_CHECKLIST: tuple[ChecklistSpec, ...] = (
                   "Amministratore", "condominium", ("condominio",)),
 )
 
+# Garage or parking space to let: who lets it must hold the title; the building rules decide who can park what.
+BOX_LEASE_CHECKLIST: tuple[ChecklistSpec, ...] = (
+    ChecklistSpec("visura_catastale", "Visura catastale", "Identifica il box (C/6 o C/7) e verifica che chi lo affitta ne sia proprietario o abbia titolo.",
+                  "Proprietario o tecnico", "required"),
+    ChecklistSpec("planimetria", "Planimetria catastale", "Descrive il posto o il box consegnato e va spesso allegata al contratto.",
+                  "Proprietario", "recommended", ("conformita_catastale",)),
+    ChecklistSpec("visura_ipotecaria", "Ispezione ipotecaria", "Un pignoramento trascritto prima del contratto può renderlo inopponibile all'acquirente all'asta.",
+                  "Agente (Sister o SPID)", "recommended", ("formalita_pregiudizievoli",)),
+    ChecklistSpec("regolamento_condominio", "Regolamento di condominio", "Regole d'uso dell'autorimessa e delle parti comuni (accessi, tipo di veicoli, depositi).",
+                  "Amministratore", "condominium"),
+)
+
 # Lease of a home: the owner must deliver the APE and prove who can let the flat.
 LEASE_CHECKLIST: tuple[ChecklistSpec, ...] = (
     ChecklistSpec("visura_catastale", "Visura catastale", "Identifica l'immobile e verifica che chi affitta ne sia proprietario o abbia titolo.",
@@ -188,6 +200,8 @@ LEASE_CHECKLIST: tuple[ChecklistSpec, ...] = (
     ChecklistSpec("visura_ipotecaria", "Ispezione ipotecaria", "Un pignoramento trascritto prima del contratto può renderlo inopponibile "
                   "all'acquirente all'asta: l'inquilino rischia di dover lasciare l'immobile.", "Agente (Sister o SPID)", "recommended",
                   ("formalita_pregiudizievoli",)),
+    ChecklistSpec("libretto_impianto", "Libretto dell'impianto di riscaldamento", "Mostra manutenzioni e controlli della caldaia: il proprietario risponde "
+                  "della sicurezza dell'impianto consegnato.", "Proprietario", "recommended"),
     ChecklistSpec("regolamento_condominio", "Regolamento di condominio", "Divieti e regole (animali, uso delle parti comuni, affitti brevi) "
                   "che l'inquilino deve rispettare.", "Amministratore", "condominium"),
 )
@@ -221,13 +235,25 @@ COMMERCIAL_LEASE_CHECKLIST: tuple[ChecklistSpec, ...] = (
                   "Proprietario", "recommended", typologies=_CPI_TYPOLOGIES),
     ChecklistSpec("regolamento_condominio", "Regolamento di condominio", "Può vietare o limitare alcune attività commerciali nel locale.",
                   "Amministratore", "condominium"),
+    ChecklistSpec("collaudo_statico", "Collaudo statico e deposito sismico", "Attesta la sicurezza strutturale prima di installare macchinari o aprire al pubblico.",
+                  "Proprietario o tecnico", "recommended", typologies=_STRUTTURALI),
+    ChecklistSpec("autorizzazione_ambientale", "Autorizzazioni ambientali (AUA, scarichi, emissioni)", "Gli scarichi e le emissioni dei locali devono essere autorizzati: chi avvia l'attività ne risponde.",
+                  "Proprietario", "recommended", typologies=_PRODUTTIVI),
+    ChecklistSpec("valutazione_amianto", "Verifica della presenza di amianto", "Le coperture in eternit comportano obblighi di censimento e di sicurezza per chi lavora nei locali.",
+                  "Proprietario o tecnico", "recommended", typologies=_CON_COPERTURE),
+    ChecklistSpec("verifica_messa_a_terra", "Verifica impianto di messa a terra e scariche atmosferiche", "Le verifiche periodiche (DPR 462/2001) sono obbligatorie per le attività con lavoratori.",
+                  "Proprietario", "recommended", typologies=_PRODUTTIVI),
+    ChecklistSpec("regolamento_centro_commerciale", "Regolamento del centro o del consorzio dei conduttori", "Orari di apertura, spese comuni, merceologie ammesse e regole che il conduttore deve rispettare.",
+                  "Gestore del centro", "recommended", typologies=_CENTRO_COMMERCIALE),
+    ChecklistSpec("autorizzazione_grande_struttura", "Autorizzazione commerciale della struttura", "La categoria merceologica del conduttore deve essere compatibile con l'autorizzazione del centro.",
+                  "Gestore del centro", "recommended", typologies=_CENTRO_COMMERCIALE),
 )
 
 
 def specs_for(property_record: dict[str, Any]) -> tuple[ChecklistSpec, ...]:
     typology, contract = typology_of(property_record), contract_of(property_record)
     if contract == "affitto" and typology.key == "box":
-        return tuple(s for s in BOX_CHECKLIST if s.key not in {"visura_ipotecaria", "titolo_edilizio"})
+        return BOX_LEASE_CHECKLIST
     if contract == "affitto":
         return COMMERCIAL_LEASE_CHECKLIST if typology.asset == "commerciale" else LEASE_CHECKLIST
     if typology.key == "box":
