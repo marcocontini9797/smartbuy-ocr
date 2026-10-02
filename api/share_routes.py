@@ -20,6 +20,7 @@ from supabase import create_client
 from document_engine.agent_llm_gateway import AgentLLMGateway
 from document_engine.agent_retrieval_supabase import build_agent_context
 from document_engine.checklist import build_checklist
+from document_engine.superseded import drop_superseded
 from document_engine.cross_validation import cross_validate
 from api.intelligence_service import build_property_intelligence
 
@@ -56,8 +57,7 @@ def _fetch_shared(token: str) -> dict:
 def shared_fascicolo(token: str):
     data = _fetch_shared(token)
     property_record = data["property"]
-    documents = data["documents"]
-    facts = data["facts"]
+    documents, facts = drop_superseded(data["documents"], data["facts"])
     analyses = data["analyses"]
     provenance = data["provenance"]
 

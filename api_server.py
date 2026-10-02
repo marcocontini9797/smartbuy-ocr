@@ -67,7 +67,8 @@ def health_check():
 async def ingest_document(
     file: UploadFile = File(...),
     fascicolo_id: Optional[str] = Query(None),
-    agente_id: Optional[str] = Query(None)
+    agente_id: Optional[str] = Query(None),
+    include_ocr_text: bool = Query(False),
 ):
 
     start_time = datetime.now()
@@ -333,7 +334,11 @@ async def ingest_document(
                 fascicolo_id,
 
             "agente_id":
-                agente_id
+                agente_id,
+
+            # `is True`: called directly as a function, an omitted parameter
+            # keeps its Query(...) default object, which is truthy.
+            **({"ocr_text": ocr_text} if include_ocr_text is True else {})
 
         })
 

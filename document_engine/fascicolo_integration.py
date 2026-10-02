@@ -201,6 +201,7 @@ def build_fascicolo_comparisons(
                 "existing_document_id": (
                     existing_document["document_id"]
                 ),
+                "existing_file_name": existing_document.get("file_name"),
                 "new_document_id": new_document_id,
                 "similarity": similarity_result,
                 "identity_resolution": identity_resolution,
@@ -242,6 +243,7 @@ def summarize_comparisons(comparisons: list[dict[str, Any]]) -> dict[str, Any]:
         items.append(
             {
                 "existing_document_id": entry.get("existing_document_id"),
+                "existing_file_name": entry.get("existing_file_name"),
                 "action": action.get("action"),
                 "requires_review": bool(action.get("requires_review")),
                 "reason": action.get("reason"),

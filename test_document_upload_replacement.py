@@ -22,6 +22,7 @@ class Client:
         return self
     def select(self,*a): return self
     def update(self,row): self.calls.append(("update",self.name,row)); return self
+    def insert(self,row): self.calls.append(("insert",self.name,row)); return self
     def eq(self,*a): return self
     def limit(self,*a): return self
     def execute(self): return SimpleNamespace(data=[])
@@ -39,7 +40,9 @@ def harness(monkeypatch):
     monkeypatch.setattr(routes,"store_original",lambda *a,**k:"owner/1/document.pdf")
     monkeypatch.setattr(routes,"persist_document_facts",lambda *a,**k:facts.append(k) or 1)
     monkeypatch.setitem(sys.modules,"llm_client",SimpleNamespace(MODEL="fake-model"))
-    async def ingest(**kwargs): return JSONResponse(deepcopy(PAYLOAD))
+    async def ingest(**kwargs):
+        client.ingest_kwargs=kwargs
+        return JSONResponse({**deepcopy(PAYLOAD),**getattr(client,"extra_payload",{})})
     monkeypatch.setitem(sys.modules,"api_server",SimpleNamespace(ingest_document=ingest))
     def run():
         file=UploadFile(filename="ape.pdf",file=io.BytesIO(b"synthetic-test"))
@@ -121,3 +124,28 @@ def test_unknown_confidence_is_not_invented():
         extracted_fields={},second_reading={"x":False})
     assert client.store["property_facts"][0]["confidence_score"] is None
     assert client.store["property_facts"][0]["fact_value"]["value"] is False
+
+
+def test_ocr_text_is_requested_stored_and_never_sent_to_the_browser(harness):
+    client,_,_,_,run=harness
+    client.extra_payload={"ocr_text":"testo ocr della visura"}
+    result=run()
+    assert client.ingest_kwargs["include_ocr_text"] is True
+    assert "ocr_text" not in result["result"]
+    stored=[row for kind,table,row in client.calls if kind=="insert" and table=="document_text_extractions"]
+    assert stored==[{"document_id":41,"extraction_method":"vision_ocr","raw_text":"testo ocr della visura",
+                     "character_count":len("testo ocr della visura")}]
+
+def test_missing_or_invalid_ocr_text_stores_nothing_and_still_succeeds(harness):
+    client,_,_,_,run=harness
+    client.extra_payload={"ocr_text":12345}
+    result=run()
+    assert result["status"]=="success"
+    assert not [1 for kind,table,_ in client.calls if table=="document_text_extractions"]
+
+def test_failure_saving_the_ocr_text_does_not_fail_the_upload(harness,monkeypatch):
+    client,_,_,_,run=harness
+    client.extra_payload={"ocr_text":"testo"}
+    def broken(row): raise RuntimeError("storage down")
+    monkeypatch.setattr(client,"insert",broken)
+    assert run()["status"]=="success"

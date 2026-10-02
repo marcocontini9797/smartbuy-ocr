@@ -15,6 +15,7 @@ from document_engine.agent_review import build_agent_review
 from document_engine.operational_services import route_ape_source, validate_gis
 from document_engine.external_sources import REGISTRY, source_plan
 from document_engine.acquisition_engine import build_acquisition_plan
+from document_engine.superseded import current_documents, drop_superseded
 
 
 router = APIRouter(prefix="/api/v1", tags=["operations"])
@@ -67,6 +68,7 @@ def _validation_sources(property_id: int, client):
         provenance = client.table("fact_provenance").select("*").in_("id", provenance_ids).execute().data or [] if provenance_ids else []
     except Exception as exc:
         raise HTTPException(502, "Cross-validation sources unavailable") from exc
+    documents, facts = drop_superseded(documents, facts)
     return property_record, facts, documents, {str(row["id"]): row for row in provenance}
 
 
@@ -114,10 +116,11 @@ def acquisition_plan(property_id: int, client=Depends(user_client)):
         documents = client.table("documents").select("*").in_("id", document_ids).execute().data or [] if document_ids else []
     except Exception as exc:
         raise HTTPException(502, "Document service unavailable") from exc
+    documents, facts = drop_superseded(documents, _rows(client, "property_facts", property_id))
     return build_acquisition_plan(
         property_record=prop,
         documents=documents,
-        facts=_rows(client, "property_facts", property_id),
+        facts=facts,
         existing_requests=_rows(client, "smartbuy_document_requests", property_id),
     )
 
@@ -147,7 +150,7 @@ def _document_packages_plan(property_id: int, client) -> tuple[dict, dict]:
         documents = client.table("documents").select("*").in_("id", ids).execute().data or [] if ids else []
     except Exception as exc:
         raise HTTPException(502, "Document service unavailable") from exc
-    plan = build_document_packages(prop, documents, _rows(client, "smartbuy_document_requests", property_id))
+    plan = build_document_packages(prop, current_documents(documents), _rows(client, "smartbuy_document_requests", property_id))
     return plan, prop
 
 

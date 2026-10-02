@@ -9,10 +9,12 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel
 
 from api.property_routes import get_property
 from api.session import user_client
 from document_engine.ingestion import validate_file, MAX_FILE_SIZE
+from document_engine.superseded import SupersedeError, validate_supersede
 from core.operational_models import IntakeRecord, OperationalEvidence, PipelineRun, PipelineStage, SourceMode, now_iso, stable_id
 
 
@@ -137,20 +139,60 @@ def _organization(payload, filename):
         return None
 
 
-def _fascicolo_review(client, property_id: int, document: dict, payload: dict, filename: str, checksum: str):
+def _save_ocr_text(client, document: dict, ocr_text: str | None) -> None:
+    """Keep the OCR text so later uploads can be compared with the content of
+    this document, not only with its extracted fields. Best effort: the
+    analysis is already saved and valid without it."""
+    if not ocr_text:
+        return
+    try:
+        client.table("document_text_extractions").insert({
+            "document_id": document["id"], "extraction_method": "vision_ocr",
+            "raw_text": ocr_text, "character_count": len(ocr_text),
+        }).execute()
+    except Exception:
+        return
+
+
+def _attach_ocr_text(client, rows: list[dict], document_type) -> None:
+    """Add stored OCR text to the rows of the same document type as the new
+    upload: only those are compared by content, and loading every text of the
+    fascicolo on each upload would be wasted work. Rows are updated in place;
+    on any failure they simply stay without text."""
+    kind = str(document_type or "").strip().casefold()
+    same = [row for row in rows if kind and str(row.get("document_type") or "").strip().casefold() == kind]
+    if not same:
+        return
+    try:
+        texts = client.table("document_text_extractions").select("document_id,raw_text").in_(
+            "document_id", [row["id"] for row in same]).execute().data or []
+    except Exception:
+        return
+    by_id = {str(item.get("document_id")): item.get("raw_text") for item in texts}
+    for row in same:
+        text = by_id.get(str(row["id"]))
+        if isinstance(text, str) and text:
+            row["ocr_text"] = text
+
+
+def _fascicolo_review(client, property_id: int, document: dict, payload: dict, filename: str, checksum: str,
+                      ocr_text: str | None = None):
     """Advisory comparison of the new document with the rest of the fascicolo
     (new version? another cadastral unit? an accessory?). Nothing is merged or
     replaced. The document is already saved, so any failure here yields None
     rather than failing the upload."""
     try:
         from document_engine.fascicolo_integration import build_fascicolo_comparisons, summarize_comparisons
+        from document_engine.superseded import current_documents
         rows = client.table("documents").select(
-            "id,file_name,document_type,extracted_fields,content_sha256,processing_status"
+            "id,file_name,document_type,extracted_fields,content_sha256,processing_status,superseded_by"
         ).eq("fascicolo_id", str(property_id)).execute().data or []
-        existing = [row for row in rows if str(row.get("id")) != str(document["id"])
-                    and row.get("processing_status") not in {"failed", "rejected"}]
+        existing = current_documents([row for row in rows if str(row.get("id")) != str(document["id"])
+                                      and row.get("processing_status") not in {"failed", "rejected"}])
+        _attach_ocr_text(client, existing, payload.get("document_type"))
         return summarize_comparisons(build_fascicolo_comparisons(
-            payload, new_document_id=str(document["id"]), filename=filename,
+            {**payload, "ocr_text": ocr_text} if ocr_text else payload,
+            new_document_id=str(document["id"]), filename=filename,
             sha256=checksum, existing_documents=existing,
         ))
     except Exception:
@@ -224,6 +266,51 @@ def open_original(property_id: int, document_id: int, client=Depends(user_client
     return {"url": url, "file_name": rows[0].get("file_name"), "expires_in": 300}
 
 
+class SupersedeRequest(BaseModel):
+    replaced_by: int
+
+
+_SUPERSEDE_COLUMNS = "id,file_name,document_type,processing_status,superseded_by"
+
+
+@router.post("/properties/{property_id}/documents/{document_id}/supersede")
+def supersede_document(property_id: int, document_id: int, body: SupersedeRequest, client=Depends(user_client)):
+    """Mark a document as replaced by a newer version of the same kind. Nothing
+    is deleted and it can be undone; the replaced version just stops counting
+    in the checks."""
+    get_property(property_id, client)
+    try:
+        rows = client.table("documents").select(_SUPERSEDE_COLUMNS).eq("fascicolo_id", str(property_id))             .in_("id", [document_id, body.replaced_by]).execute().data or []
+    except Exception as exc:
+        raise HTTPException(502, "Document service unavailable") from exc
+    by_id = {str(row["id"]): row for row in rows}
+    try:
+        validate_supersede(by_id.get(str(document_id)), by_id.get(str(body.replaced_by)))
+    except SupersedeError as exc:
+        raise HTTPException(exc.status_code, exc.message) from exc
+    stamp = datetime.now(timezone.utc).isoformat()
+    try:
+        updated = client.table("documents").update({"superseded_by": body.replaced_by, "superseded_at": stamp})             .eq("id", document_id).eq("fascicolo_id", str(property_id)).execute().data
+    except Exception as exc:
+        raise HTTPException(502, "Impossibile aggiornare il documento") from exc
+    if not updated:
+        raise HTTPException(404, "Documento non trovato in questa pratica")
+    return {"document_id": document_id, "superseded_by": body.replaced_by, "superseded_at": stamp}
+
+
+@router.delete("/properties/{property_id}/documents/{document_id}/supersede")
+def restore_document(property_id: int, document_id: int, client=Depends(user_client)):
+    """Undo a replacement: the document counts in the checks again."""
+    get_property(property_id, client)
+    try:
+        updated = client.table("documents").update({"superseded_by": None, "superseded_at": None})             .eq("id", document_id).eq("fascicolo_id", str(property_id)).execute().data
+    except Exception as exc:
+        raise HTTPException(502, "Impossibile aggiornare il documento") from exc
+    if not updated:
+        raise HTTPException(404, "Documento non trovato in questa pratica")
+    return {"document_id": document_id, "superseded_by": None}
+
+
 @router.post("/properties/{property_id}/documents", status_code=201)
 async def analyze_property_document(
     property_id: int,
@@ -280,6 +367,7 @@ async def analyze_property_document(
             file=file,
             fascicolo_id=str(property_id),
             agente_id=client.smartbuy_user_id,
+            include_ocr_text=True,
         )
         if getattr(result, "status_code", 500) >= 400:
             run.status = "failed"
@@ -301,6 +389,9 @@ async def analyze_property_document(
             raise HTTPException(502, "Risposta del servizio di analisi non valida") from exc
         if not isinstance(payload, dict) or payload.get("status") != "success":
             raise HTTPException(502, "Il servizio non ha completato l'analisi")
+        ocr_text = payload.pop("ocr_text", None)
+        if not isinstance(ocr_text, str):
+            ocr_text = None
         if not isinstance(payload.get("extracted_fields"), dict):
             raise HTTPException(502, "Campi estratti non validi")
         for key in ("red_flags", "consistency_discrepancies"):
@@ -361,6 +452,7 @@ async def analyze_property_document(
             second_reading=payload.get("extraction_disagreements"),
             unsupported_fields=_unsupported_fields(payload),
         )
+        _save_ocr_text(client, document, ocr_text)
         run.status = "completed"
         run.completed_at = now_iso()
         _best_effort_insert(client, "smartbuy_analysis_runs", run.model_dump(mode="json"))
@@ -386,7 +478,7 @@ async def analyze_property_document(
             "facts_saved": facts_saved,
             "original_saved": original_path is not None,
             "organization": _organization(payload, filename),
-            "fascicolo": _fascicolo_review(client, property_id, document, payload, filename, intake.checksum_sha256),
+            "fascicolo": _fascicolo_review(client, property_id, document, payload, filename, intake.checksum_sha256, ocr_text),
             "warnings": [] if original_path is not None else [
                 "Analisi salvata, ma originale non archiviato: verifica lo Storage."
             ],

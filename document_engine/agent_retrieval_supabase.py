@@ -23,6 +23,7 @@ from __future__ import annotations
 from typing import Any
 
 from document_engine.checklist import build_fascicolo
+from document_engine.superseded import drop_superseded
 from red_flags import run_all_red_flags
 
 _SEVERITY_TO_RISK = {"critica": "high", "alta": "high", "media": "medium", "bassa": "low"}
@@ -34,6 +35,7 @@ def _unwrap(value):
 
 def build_agent_context(*, property_id: int, question: str, facts: list[dict], documents: list[dict],
                         provenance: list[dict]) -> dict[str, Any]:
+    documents, facts = drop_superseded(documents, facts)
     provenance_by_id = {str(row["id"]): row for row in provenance}
     document_by_id = {str(row["id"]): row for row in documents}
 

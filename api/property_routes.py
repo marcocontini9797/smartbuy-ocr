@@ -15,6 +15,7 @@ from api.session import user_client
 from api.intelligence_service import build_property_intelligence
 from document_engine.cross_validation import strip_accents
 from document_engine.geocoding import geocode, postcode
+from document_engine.superseded import current_facts, drop_superseded
 from document_engine.hazards import point_hazards
 from document_engine.market import build_market_context
 from document_engine.territory import build_territory, fiaip_reference, ipab_area, price_update, year_update
@@ -169,6 +170,16 @@ def _zone(client, property_record: dict) -> dict | None:
         raise HTTPException(status_code=502, detail="OMI data unavailable") from exc
 
 
+def _current_facts(client, property_id: int) -> list[dict]:
+    """The property's facts without those read from a replaced document."""
+    facts = _rows(client, "property_facts", property_id)
+    try:
+        documents = client.table("documents").select("id,superseded_by").eq("fascicolo_id", str(property_id)).execute().data or []
+    except Exception:
+        return facts
+    return current_facts(facts, documents)
+
+
 def _valuation(property_id: int, client) -> dict:
     property_record = _located(client, property_id, get_property(property_id, client))
     zone = _zone(client, property_record)
@@ -180,7 +191,7 @@ def _valuation(property_id: int, client) -> dict:
                                                                   "p_cod_tip": omi_code}).execute().data
         except Exception:
             yield_stats = None  # the valuation declares its fallback
-    facts = _rows(client, "property_facts", property_id)
+    facts = _current_facts(client, property_id)
     comparables = _optional_rows(client, "property_comparables", property_id)
     kind = property_record.get("property_type") or "residenziale"
     try:
@@ -412,7 +423,7 @@ def get_property_workspace(property_id: int, client=Depends(user_client)):
         documents = (client.table("documents").select("*").in_("id", document_ids).execute().data or []) if document_ids else []
     except Exception as exc:
         raise HTTPException(502, "Document service unavailable") from exc
-    facts = _rows(client, "property_facts", property_id)
+    facts = current_facts(_rows(client, "property_facts", property_id), documents)
     evidence = _rows(client, "property_evidence", property_id)
     issues = _rows(client, "property_issues", property_id)
     runs = _optional_rows(client, "smartbuy_analysis_runs", property_id)
@@ -452,6 +463,7 @@ def get_property_intelligence(property_id: int, client=Depends(user_client)):
         provenance = client.table("fact_provenance").select("*").in_("id", provenance_ids).execute().data or [] if provenance_ids else []
     except Exception as exc:
         raise HTTPException(502, "Intelligence lineage unavailable") from exc
+    documents, facts = drop_superseded(documents, facts)
     return build_property_intelligence(
         property_record=property_record,
         facts=facts,
