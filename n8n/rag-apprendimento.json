@@ -1,0 +1,135 @@
+{
+  "name": "SmartBuy - apprendimento RAG",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 4 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Ogni notte alle 4",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SMARTBUY_API_URL }}/ops/rag/learn",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-SmartBuy-Ops-Token",
+              "value": "={{ $env.SMARTBUY_OPS_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "name": "Ciclo di apprendimento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c",
+              "leftValue": "={{ $json.adopted_version || $json.rolled_back || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Qualcosa è cambiato?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "smartbuy@example.com",
+        "toEmail": "CAMBIA@example.com",
+        "subject": "SmartBuy: la RAG ha cambiato configurazione",
+        "emailFormat": "text",
+        "text": "=Ciclo di apprendimento della RAG.\n\nValutazioni esaminate: accettate {{ $json.labels.accepted }}, in revisione {{ $json.labels.review }}, scartate {{ $json.labels.rejected }}.\n\nOttimizzazione: {{ $json.tuning ? $json.tuning.action : 'non eseguita' }} ({{ $json.tuning ? $json.tuning.reasons.join('; ') : '' }})\n{{ $json.adopted_version ? 'ADOTTATA la configurazione ' + $json.adopted_version : '' }}\n{{ $json.rolled_back ? 'RIPRISTINATA la configurazione precedente: ' + $json.rolled_back : '' }}\n\nStorico e motivazioni: GET /ops/rag/config"
+      },
+      "name": "Avvisa",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        720,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "Ogni notte alle 4": {
+      "main": [
+        [
+          {
+            "node": "Ciclo di apprendimento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ciclo di apprendimento": {
+      "main": [
+        [
+          {
+            "node": "Qualcosa è cambiato?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qualcosa è cambiato?": {
+      "main": [
+        [
+          {
+            "node": "Avvisa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

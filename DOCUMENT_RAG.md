@@ -35,3 +35,20 @@ Ogni risposta registra una **traccia** (`agent_retrieval_traces`: chunk usati, r
    valutazioni per gruppo; la soglia la applica una persona.
 Verifica dal vivo: `scripts/smoke_rag_feedback.py` (inserimento, ricerca, traccia, suggerimenti, nessuna ereditarietà da domande diverse).
 Limite onesto: la ripetizione di domande simili nello stesso fascicolo è rara; il valore principale è la calibrazione.
+
+## Auto-miglioramento robusto (`rag_learning.py`, ogni notte via n8n `rag-apprendimento.json`)
+Principio: **il feedback umano è un indizio, non una verità**. Cosa può cambiare da solo è poco e limitato; il resto resta umano.
+
+1. **Verifica delle valutazioni** (`rag_trust.py`): un giudice LLM legge i brani veri e dice se la risposta è supportata. Umano e giudice
+   d'accordo → etichetta accettata; in disaccordo → "in revisione", non usata. Peso per utente = storico di accordo col giudice
+   (partenza neutra 0,5); utenti che il giudice contraddice sono silenziati; sconti per raffiche, voti sempre uguali, auto-contraddizioni.
+   Un 👎 insegna alla soglia solo se anche il giudice trova la risposta non supportata (altrimenti non è un problema di ricerca).
+2. **Cosa si impara** (`rag_tuner.py`): solo il filtro di rilevanza (`weak_relevance`, `weak_similarity`), perché si può rigiocare
+   esattamente dalle tracce (`candidates`) senza richiamare modelli. Limiti rigidi (`rag_config.BOUNDS`) e un solo passo piccolo per ciclo.
+3. **Protezioni prima di adottare**: almeno 40 etichette, 10 per classe, 3 utenti diversi; nessun utente oltre il 20% del peso;
+   le risposte utili restano ≥95%; il guadagno deve reggere togliendo qualsiasi singolo utente e avere limite inferiore bootstrap > 0.
+4. **Rollback automatico**: se con la nuova configurazione la quota di 👍 accettati scende di oltre 10 punti rispetto alla precedente
+   (≥20 valutazioni per parte) si torna alla versione prima. Dopo un cambio, 7 giorni di pausa.
+5. **Tracciabilità**: `rag_configs` (versioni con motivo e numeri), `rag_feedback_labels` (verdetto su ogni valutazione).
+Verifica dal vivo: `scripts/smoke_rag_learning.py` (ripristina tutto). Non impara: pesi di fusione, chunking, prompt (servono ancora
+`evaluation/` e una persona). Limite: con pochi agenti il ciclo resterà "dati insufficienti" per un po'; è voluto.

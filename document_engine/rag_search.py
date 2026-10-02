@@ -95,6 +95,8 @@ class Passage:
     score: float = 0.0
     relevance: float | None = None
     neighbor: bool = False
+    sem_rank: int | None = None      # rank in the semantic / lexical list of the question itself
+    lex_rank: int | None = None
 
     @property
     def pages(self) -> str:
@@ -143,6 +145,8 @@ class Retrieval:
     best_relevance: float | None = None                    # of the top 3, when a reranker ran
     vector: list[float] | None = None                      # embedding of the question, kept for the feedback trace
     hints_applied: int = 0                                 # chunks moved up or down by earlier feedback
+    candidates: list[dict[str, Any]] = field(default_factory=list)   # features before feedback hints, for replay
+    identifier_hit: bool = False
 
 
 def _passage(row: dict[str, Any]) -> Passage:
@@ -162,10 +166,12 @@ def fuse(variants: list[tuple[float, list[dict[str, Any]]]], config: RetrievalCo
     two incomparable scales; rows come with the rank each list gave them."""
     lexical_weight = config.lexical_weight + (config.identifier_boost if has_identifiers else 0.0)
     merged: dict[str, Passage] = {}
-    for weight, rows in variants:
+    for position, (weight, rows) in enumerate(variants):
         for row in rows:
             candidate = _passage(row)
             passage = merged.setdefault(candidate.chunk_id, candidate)
+            if position == 0:
+                passage.sem_rank, passage.lex_rank = row.get("sem_rank"), row.get("lex_rank")
             passage.similarity = max(passage.similarity, float(row.get("similarity") or 0.0))
             if row.get("sem_rank") is not None:
                 passage.score += weight * config.semantic_weight / (config.rrf_k + int(row["sem_rank"]))
@@ -295,6 +301,8 @@ def retrieve(store: ChunkStore, embed: Embedder, property_id: int, question: str
             ranked = sorted(ranked, key=lambda p: (-(p.relevance or 0.0), -p.score, p.document_id, p.chunk_index))
             reranked = True
 
+    snapshot = [{"chunk_id": p.chunk_id, "sem_rank": p.sem_rank, "lex_rank": p.lex_rank,
+                 "similarity": round(p.similarity, 4), "relevance": p.relevance} for p in ranked[: config.candidate_k]]
     hints_applied = 0
     feedback = getattr(store, "feedback_hints", None)
     if feedback is not None:
@@ -313,12 +321,14 @@ def retrieve(store: ChunkStore, embed: Embedder, property_id: int, question: str
     best_relevance = max((p.relevance or 0.0 for p in ranked[:3]), default=0.0) if reranked else None
     if strength == "none":
         return Retrieval([], "none", best_similarity, queries, reasons, ranked=[], best_relevance=best_relevance,
-                         vector=list(map(float, vectors[0])), hints_applied=hints_applied)
+                         vector=list(map(float, vectors[0])), hints_applied=hints_applied,
+                     candidates=snapshot, identifier_hit="exact_identifier_match" in reasons)
     chosen = _limit_per_document(ranked, config.top_k, config.max_per_document)
     passages = _with_neighbors(store, property_id, list(chosen), config.neighbors)
     passages.sort(key=lambda p: (p.document_id, p.chunk_index))
     return Retrieval(passages, strength, best_similarity, queries, reasons, ranked=chosen, best_relevance=best_relevance,
-                     vector=list(map(float, vectors[0])), hints_applied=hints_applied)
+                     vector=list(map(float, vectors[0])), hints_applied=hints_applied,
+                     candidates=snapshot, identifier_hit="exact_identifier_match" in reasons)
 
 
 def passages_for_prompt(passages: Sequence[Passage]) -> list[dict[str, Any]]:

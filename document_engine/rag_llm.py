@@ -68,3 +68,26 @@ def rerank_passages(question: str, passages) -> dict[int, float]:
         return {j.indice: j.rilevanza for j in result.giudizi if 0 <= j.indice < len(passages)}
     except Exception:
         return {}
+
+
+class _Support(BaseModel):
+    supportata: bool = Field(description="True se OGNI affermazione della risposta è presente nei brani")
+
+
+def judge_support(question: str, answer: str, passages: list[str]) -> bool | None:
+    """Independent check used to vet human ratings: is the answer fully supported by the passages it
+    was given? None when it cannot tell (no key, no passages, error)."""
+    if not _available() or not passages:
+        return None
+    listing = "\n\n".join(f"[{i}] {text[:1200]}" for i, text in enumerate(passages))
+    try:
+        result = structured_call(
+            system=("Verifichi se una risposta a una domanda su un fascicolo immobiliare è SUPPORTATA dai brani "
+                    "forniti. Supportata = ogni dato e affermazione della risposta si trova nei brani. Se la risposta "
+                    "dice che l'informazione non risulta, è supportata solo se i brani davvero non la contengono. "
+                    "Se aggiunge, cambia o inventa qualcosa, non è supportata."),
+            user=f"Domanda: {question}\n\nRisposta: {answer}\n\nBrani:\n\n{listing}",
+            output_model=_Support, temperature=0.0, model=LIGHT_MODEL)
+        return result.supportata
+    except Exception:
+        return None

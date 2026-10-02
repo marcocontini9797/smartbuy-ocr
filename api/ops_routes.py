@@ -77,3 +77,20 @@ def rag_calibration(days: int = 90):
     rows = [{"rating": f["rating"], **{k: traces[f["trace_id"]][k] for k in ("strength", "best_relevance")}}
             for f in feedback if f["trace_id"] in traces]
     return calibration_report(rows)
+
+
+
+@router.post("/rag/learn", dependencies=[Depends(require_ops)])
+def rag_learn(tune: bool = True):
+    """One learning cycle: vet new ratings, maybe adopt better parameters, roll back if worse."""
+    from document_engine.rag_learning import run_cycle
+    from document_engine.rag_llm import judge_support
+    return run_cycle(_admin(), judge_support, tune=tune)
+
+
+@router.get("/rag/config", dependencies=[Depends(require_ops)])
+def rag_config_history():
+    """The configuration history with the reason and the numbers behind every change."""
+    rows = (_admin().table("rag_configs").select("id,status,params,parent_id,reason,metrics,created_at,activated_at")
+            .order("id", desc=True).limit(20).execute().data or [])
+    return {"versions": rows}

@@ -86,7 +86,7 @@ def index_uploaded_document(client, *, property_id: int, document: dict, ocr_tex
         return 0
 
 
-def record_trace(client, property_id: int, question: str, result) -> str | None:
+def record_trace(client, property_id: int, question: str, result, config_version: int | None = None) -> str | None:
     """Remember what retrieval did for this question, so a later 👍/👎 can be tied to the chunks
     behind the answer. Best effort: a failure only means this answer cannot be rated."""
     try:
@@ -94,7 +94,8 @@ def record_trace(client, property_id: int, question: str, result) -> str | None:
             "property_id": property_id, "question": question[:1000], "strength": result.strength,
             "best_relevance": result.best_relevance, "best_similarity": result.best_similarity,
             "chunk_ids": [p.chunk_id for p in result.ranked if _is_uuid(p.chunk_id)],
-            "question_embedding": result.vector,
+            "question_embedding": result.vector, "candidates": result.candidates,
+            "identifier_hit": result.identifier_hit, "config_version": config_version,
         }
         data = client.table("agent_retrieval_traces").insert(row).execute().data or []
         return str(data[0]["id"]) if data else None
@@ -119,9 +120,11 @@ def retrieve_passages(client, property_id: int, question: str) -> dict[str, Any]
         from document_engine.rag_llm import expand_question, rerank_passages
         from document_engine.rag_search import passages_for_prompt, retrieve
         from document_engine.rag_store import SupabaseChunkStore
+        from document_engine.rag_config import load_active, to_retrieval_config
+        version, params = load_active(client)
         result = retrieve(SupabaseChunkStore(client), _embed_queries, property_id, question,
-                          expand=expand_question, rerank=rerank_passages)
+                          expand=expand_question, rerank=rerank_passages, config=to_retrieval_config(params))
         return {"passages": passages_for_prompt(result.passages), "strength": result.strength,
-                "trace_id": record_trace(client, property_id, question, result)}
+                "trace_id": record_trace(client, property_id, question, result, version)}
     except Exception:
         return {"passages": [], "strength": "unavailable", "trace_id": None}

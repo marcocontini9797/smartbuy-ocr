@@ -20,3 +20,10 @@ sono state valutate, quanto erano rilevanti i brani trovati per quelle utili e p
 per gruppo) quale soglia di rilevanza terrebbe le risposte utili rifiutando quelle segnalate. Contiene solo numeri.
 Le soglie non si applicano da sole: le cambia una persona in `document_engine/rag_search.py` dopo aver confrontato
 la proposta con `evaluation/`.
+
+## rag-apprendimento.json
+Ogni notte alle 4 lancia il ciclo di apprendimento (`POST /ops/rag/learn`) e avvisa con una mail solo se la RAG ha
+adottato una nuova configurazione o è tornata alla precedente. Il ciclo verifica le valutazioni degli agenti
+(giudice + affidabilità dell'utente), propone nuove soglie e le adotta solo se tutte le protezioni reggono; vedi
+`DOCUMENT_RAG.md`. `GET /ops/rag/config` mostra lo storico con i motivi e i numeri di ogni cambio.
+Il workflow `rag-calibrazione.json` resta come rapporto settimanale di sola lettura.
