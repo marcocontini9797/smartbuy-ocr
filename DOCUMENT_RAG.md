@@ -52,3 +52,8 @@ Principio: **il feedback umano è un indizio, non una verità**. Cosa può cambi
 5. **Tracciabilità**: `rag_configs` (versioni con motivo e numeri), `rag_feedback_labels` (verdetto su ogni valutazione).
 Verifica dal vivo: `scripts/smoke_rag_learning.py` (ripristina tutto). Non impara: pesi di fusione, chunking, prompt (servono ancora
 `evaluation/` e una persona). Limite: con pochi agenti il ciclo resterà "dati insufficienti" per un po'; è voluto.
+
+### Segnale implicito (meno dipendenza dai pulsanti)
+Ogni traccia conserva la risposta data. Se lo stesso utente, nello stesso fascicolo, rifà entro 3 minuti una domanda molto simile
+(coseno ≥ 0,85), la risposta precedente è sospetta; il giudice la verifica e solo se la trova non supportata diventa un'etichetta
+negativa di peso basso (0,3). Non serve nessun clic dell'agente. Verifica dal vivo: `scripts/smoke_rag_reask.py`.

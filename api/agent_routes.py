@@ -35,6 +35,13 @@ def ask_agent(property_id: int, request: AgentAskRequest, client=Depends(user_cl
         result = service.ask(property_id=property_id, question=request.question)
     except Exception as exc:
         raise HTTPException(502, "L'assistente non è riuscito a rispondere: riprova tra poco.") from exc
+    if retrieval.last_trace_id:
+        try:    # the answer is kept so a quick re-ask can later be recognised as a sign it fell short
+            client.table("agent_retrieval_traces").update(
+                {"answer": result.answer[:8000], "answer_grounded": bool(result.grounded)}
+            ).eq("id", retrieval.last_trace_id).execute()
+        except Exception:
+            pass
     return AgentAskResponse(
         answer=result.answer, confidence=result.confidence, grounded=result.grounded,
         risk_level=result.risk_level, sources=result.sources, trace_id=retrieval.last_trace_id,

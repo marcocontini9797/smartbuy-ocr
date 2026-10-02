@@ -113,3 +113,29 @@ def test_rollback_only_with_enough_evidence_of_decline():
     assert should_roll_back([1] * 10, [1] * 30)[0] is False
     assert should_roll_back([1] * 10 + [-1] * 15, [1] * 25 + [-1] * 5)[0] is True
     assert should_roll_back([1] * 24 + [-1], [1] * 25 + [-1] * 5)[0] is False
+
+
+# --- implicit re-asks -------------------------------------------------------------------------------------
+
+def trace(i, user, t, vec, prop=1):
+    return {"id": i, "user_id": user, "property_id": prop, "created_at": f"2026-10-02T10:{t}+00:00", "question_embedding": vec}
+
+
+def test_quick_similar_question_marks_the_earlier_answer():
+    from document_engine.rag_learning import find_reasks
+    found = find_reasks([trace("a", "u", "00:00", [1, 0]), trace("b", "u", "01:00", "[0.99, 0.1]")])
+    assert [t["id"] for t in found] == ["a"]
+
+
+def test_reask_ignores_slow_different_or_other_people():
+    from document_engine.rag_learning import find_reasks
+    assert find_reasks([trace("a", "u", "00:00", [1, 0]), trace("b", "u", "09:00", [1, 0])]) == []      # too late
+    assert find_reasks([trace("a", "u", "00:00", [1, 0]), trace("b", "u", "00:30", [0, 1])]) == []      # other topic
+    assert find_reasks([trace("a", "u", "00:00", [1, 0]), trace("b", "v", "00:30", [1, 0])]) == []      # other user
+    assert find_reasks([trace("a", "u", "00:00", [1, 0]), trace("b", "u", "00:30", [1, 0], prop=2)]) == []
+
+
+def test_implicit_label_needs_judge_confirmation_and_is_light():
+    from document_engine.rag_trust import IMPLICIT_WEIGHT, decide_implicit
+    assert decide_implicit(False).verdict == "accepted" and decide_implicit(False).weight == IMPLICIT_WEIGHT < 0.5
+    assert decide_implicit(True).verdict == "review" and decide_implicit(None).weight == 0.0

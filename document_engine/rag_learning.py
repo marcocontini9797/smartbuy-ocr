@@ -12,11 +12,12 @@ the verdict on every rating (`rag_feedback_labels`), so any change can be explai
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Sequence
 
 from document_engine.rag_config import RagParams, from_dict, invalidate_cache, to_dict
-from document_engine.rag_trust import UserHistory, decide_explicit
+from document_engine.rag_trust import UserHistory, decide_explicit, decide_implicit
 from document_engine.rag_tuner import Label, propose, should_roll_back
 
 COOLDOWN = timedelta(days=7)
@@ -70,6 +71,66 @@ def label_new_feedback(client, judge: Judge) -> dict[str, int]:
             "trace_id": fb["trace_id"], "feedback_id": fb["id"], "source": "explicit", "user_id": fb["user_id"],
             "rating": fb["rating"], "weight": round(decision.weight, 4), "verdict": decision.verdict,
             "judge_supported": supported, "reasons": decision.reasons}, on_conflict="trace_id,source").execute()
+        counts[decision.verdict] += 1
+    return counts
+
+
+REASK_WINDOW = timedelta(seconds=180)
+REASK_SIMILARITY = 0.85
+
+
+def _vector(value) -> list[float] | None:
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except ValueError:
+            return None
+    return [float(x) for x in value] if value else None
+
+
+def _cosine(a: Sequence[float], b: Sequence[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    norm = (sum(x * x for x in a) ** 0.5) * (sum(y * y for y in b) ** 0.5)
+    return dot / norm if norm else 0.0
+
+
+def find_reasks(traces: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Traces whose answer the same user, in the same fascicolo, asked again within minutes: the
+    earlier trace of each pair. Pure: `traces` need id, user_id, property_id, created_at, question_embedding."""
+    groups: dict[tuple, list[dict[str, Any]]] = {}
+    for t in traces:
+        groups.setdefault((t["user_id"], t["property_id"]), []).append(t)
+    found = []
+    for group in groups.values():
+        group.sort(key=lambda t: t["created_at"])
+        for first, second in zip(group, group[1:]):
+            a, b = _vector(first.get("question_embedding")), _vector(second.get("question_embedding"))
+            if a and b and _parse(second["created_at"]) - _parse(first["created_at"]) <= REASK_WINDOW \
+                    and _cosine(a, b) >= REASK_SIMILARITY:
+                found.append(first)
+    return found
+
+
+def label_reasks(client, judge: Judge) -> dict[str, int]:
+    since = (_now() - timedelta(days=14)).isoformat()
+    traces = (client.table("agent_retrieval_traces")
+              .select("id,user_id,property_id,created_at,question,question_embedding,answer,chunk_ids")
+              .gte("created_at", since).not_.is_("answer", "null").limit(2000).execute().data or [])
+    labelled = {r["trace_id"] for r in (client.table("rag_feedback_labels").select("trace_id").limit(5000).execute().data or [])}
+    counts = {"accepted": 0, "review": 0, "rejected": 0}
+    for trace in find_reasks(traces):
+        if trace["id"] in labelled:        # a person already rated it, or it was labelled before
+            continue
+        texts: list[str] = []
+        if trace["chunk_ids"]:
+            texts = [c["content"] for c in (client.table("document_chunks").select("content")
+                                            .in_("id", trace["chunk_ids"]).execute().data or [])]
+        decision = decide_implicit(judge(trace["question"], trace["answer"], texts))
+        client.table("rag_feedback_labels").upsert({
+            "trace_id": trace["id"], "source": "implicit_reask", "user_id": trace["user_id"], "rating": -1,
+            "weight": decision.weight, "verdict": decision.verdict,
+            "judge_supported": False if decision.verdict == "accepted" else None,
+            "reasons": decision.reasons}, on_conflict="trace_id,source").execute()
         counts[decision.verdict] += 1
     return counts
 
@@ -138,6 +199,7 @@ def run_cycle(client, judge: Judge, *, tune: bool = True) -> dict[str, Any]:
         report["rolled_back"] = rolled
         active = _active(client)
     report["labels"] = label_new_feedback(client, judge)
+    report["reasks"] = label_reasks(client, judge)
     if not tune or rolled:
         return report
     activated = active.get("activated_at")

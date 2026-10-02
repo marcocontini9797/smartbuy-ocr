@@ -72,3 +72,15 @@ def decide_explicit(rating: int, judge_supported: bool | None, history: UserHist
         return Decision(weight, "accepted" if weight >= ACCEPT_AT else "review", reasons)
     reasons.append("judge_disagrees")
     return Decision(0.0, "review", reasons)
+
+
+IMPLICIT_WEIGHT = 0.3
+
+
+def decide_implicit(judge_supported: bool | None) -> Decision:
+    """The user asked the same thing again within minutes: weak evidence the first answer fell short.
+    It counts only if the judge also finds that answer unsupported by its passages, and only as a
+    low-weight negative; without the judge's confirmation it is parked."""
+    if judge_supported is False:
+        return Decision(IMPLICIT_WEIGHT, "accepted", ["reask", "judge_agrees"])
+    return Decision(0.0, "review", ["reask", "judge_disagrees" if judge_supported else "no_judge"])
