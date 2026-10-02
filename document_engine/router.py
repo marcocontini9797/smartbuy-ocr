@@ -42,6 +42,10 @@ from .models import (
     DocumentClassification
 )
 
+from .document_organizer import (
+    organize_document
+)
+
 
 from .risk_engine import (
     generate_risk_analysis,
@@ -539,6 +543,19 @@ def build_document_result(
         "category":
 
             classification.category.value,
+
+
+        "organization":
+
+            organize_document(
+
+                classification,
+
+                source_document or "document.pdf",
+
+                str(document_id) if document_id else None
+
+            ),
 
 
         "classification": {
