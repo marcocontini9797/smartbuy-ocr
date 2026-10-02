@@ -47,3 +47,14 @@ def rag_backfill_route(limit: int = 50):
     client = _admin()
     result = backfill_missing(client, limit=max(1, min(limit, 200)))
     return {**result, **rag_health(client)}
+
+
+@router.get("/feedback/negative", dependencies=[Depends(require_ops)])
+def negative_feedback(days: int = 7):
+    """Answers agents marked as wrong in the last `days` days, for the weekly review. Contains
+    questions and answers, so it stays behind the ops secret."""
+    from datetime import datetime, timedelta, timezone
+    since = (datetime.now(timezone.utc) - timedelta(days=max(1, min(days, 90)))).isoformat()
+    rows = (_admin().table("agent_answer_feedback").select("property_id,question,answer,comment,grounded,sources,created_at")
+            .eq("rating", -1).gte("created_at", since).order("created_at", desc=True).limit(100).execute().data or [])
+    return {"count": len(rows), "items": rows}

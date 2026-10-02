@@ -16,7 +16,7 @@ is built fresh per request instead of configured once at startup.
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from api_models import AgentAskRequest, AgentAskResponse
+from api_models import AgentAnswerFeedbackRequest, AgentAskRequest, AgentAskResponse
 from api.property_routes import get_property
 from api.session import user_client
 from document_engine.agent_service import SmartBuyAgentService
@@ -38,3 +38,20 @@ def ask_agent(property_id: int, request: AgentAskRequest, client=Depends(user_cl
         answer=result.answer, confidence=result.confidence, grounded=result.grounded,
         risk_level=result.risk_level, sources=result.sources,
     )
+
+
+@router.post("/properties/{property_id}/agent/feedback", status_code=201)
+def rate_agent_answer(property_id: int, request: AgentAnswerFeedbackRequest, client=Depends(user_client)):
+    """Thumbs up/down on an answer; the negative ones feed the retrieval test set and the weekly digest."""
+    get_property(property_id, client)
+    if request.rating not in (1, -1):
+        raise HTTPException(422, "Valutazione non valida")
+    try:
+        client.table("agent_answer_feedback").insert({
+            "property_id": property_id, "question": request.question.strip(), "answer": request.answer,
+            "rating": request.rating, "comment": (request.comment or "").strip() or None,
+            "grounded": request.grounded, "sources": request.sources,
+        }).execute()
+    except Exception as exc:
+        raise HTTPException(503, "Feedback non salvato: riprova tra poco.") from exc
+    return {"saved": True}

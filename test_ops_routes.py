@@ -27,3 +27,34 @@ def test_health_counts_backlog(monkeypatch):
     monkeypatch.setattr(ops_routes, "_admin", lambda: fake)
     r = client.get("/ops/rag/health", headers={"X-SmartBuy-Ops-Token": "s3cret"})
     assert r.json() == {"documents_with_text": 2, "documents_indexed": 1, "backlog": 1}
+
+
+def test_agent_feedback_requires_valid_rating_and_saves(monkeypatch):
+    from api import agent_routes
+    from api.session import user_client
+    saved = []
+
+    class Table:
+        def insert(self, row):
+            saved.append(row)
+            return self
+
+        def execute(self):
+            return self
+
+    class Fake:
+        def table(self, name):
+            assert name == "agent_answer_feedback"
+            return Table()
+
+    monkeypatch.setattr(agent_routes, "get_property", lambda pid, c: {"id": pid})
+    app2 = FastAPI()
+    app2.include_router(agent_routes.router)
+    app2.dependency_overrides[user_client] = lambda: Fake()
+    c = TestClient(app2)
+    base = {"question": " q ", "answer": "a", "comment": "  "}
+    assert c.post("/api/v1/properties/5/agent/feedback", json={**base, "rating": 0}).status_code == 422
+    r = c.post("/api/v1/properties/5/agent/feedback", json={**base, "rating": -1})
+    assert r.status_code == 201
+    assert saved == [{"property_id": 5, "question": "q", "answer": "a", "rating": -1, "comment": None,
+                      "grounded": None, "sources": []}]

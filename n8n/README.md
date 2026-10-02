@@ -13,3 +13,11 @@ Configurazione:
 4. Prova con "Execute workflow" prima di attivarlo.
 
 Gli endpoint restituiscono solo conteggi, nessun contenuto dei documenti.
+
+## feedback-settimanale.json
+Ogni lunedì alle 8: legge le risposte dell'agente che gli utenti hanno segnato 👎 negli ultimi 7 giorni
+(`GET /ops/feedback/negative`) e, se ce ne sono, manda una mail con domanda, risposta, fonti e commento.
+Servono le stesse variabili e lo stesso segreto del workflow precedente. Ogni segnalazione è un candidato
+caso di test: le domande dove l'agente ha sbagliato con le fonti giuste mostrano un problema di
+risposta, quelle senza fonti un problema di ricerca (da aggiungere a `evaluation/rag_corpus*.py`).
+Il riepilogo contiene testo di domande e risposte: usa un destinatario interno.
