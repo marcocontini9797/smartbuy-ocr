@@ -23,7 +23,7 @@ DOCUMENT_LABELS = {
     "ape": "Attestato di prestazione energetica (APE)", "planimetria_catastale": "Planimetria catastale",
     "atto_compravendita": "Atto di compravendita", "atto_provenienza": "Atto di provenienza",
     "atto_di_provenienza": "Atto di provenienza", "preliminare_compravendita": "Contratto preliminare di compravendita",
-    "contratto_locazione": "Contratto di locazione", "regolamento_condominio": "Regolamento di condominio",
+    "contratto_locazione": "Contratto di locazione", "collaudo_statico": "Collaudo statico", "autorizzazione_ambientale": "Autorizzazioni ambientali", "valutazione_amianto": "Verifica amianto", "verifica_messa_a_terra": "Verifica messa a terra", "libretto_impianto": "Libretto impianto", "autorizzazione_grande_struttura": "Autorizzazione commerciale", "convenzione_urbanistica": "Convenzione urbanistica", "regolamento_centro_commerciale": "Regolamento del centro commerciale", "elenco_locazioni": "Elenco locazioni", "certificato_destinazione_urbanistica": "CDU", "regolamento_condominio": "Regolamento di condominio",
     "verbale_assemblea_condominio": "Verbale di assemblea condominiale",
     "relazione_tecnica_integrata": "Relazione tecnica integrata", "perizia_di_stima": "Perizia di stima",
     "titolo_edilizio": "Titolo edilizio", "certificato_agibilita": "Certificato di agibilità",

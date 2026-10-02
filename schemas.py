@@ -50,6 +50,15 @@ class TipoDocumento(str, Enum):
     LICENZA_COMMERCIALE = "scia_licenza_commerciale"
     CERTIFICATO_PREVENZIONE_INCENDI = "certificato_prevenzione_incendi"
     VISURA_CAMERALE = "visura_camerale"
+    COLLAUDO_STATICO = "collaudo_statico"
+    AUTORIZZAZIONE_AMBIENTALE = "autorizzazione_ambientale"
+    VALUTAZIONE_AMIANTO = "valutazione_amianto"
+    VERIFICA_MESSA_A_TERRA = "verifica_messa_a_terra"
+    LIBRETTO_IMPIANTO = "libretto_impianto"
+    AUTORIZZAZIONE_GRANDE_STRUTTURA = "autorizzazione_grande_struttura"
+    CONVENZIONE_URBANISTICA = "convenzione_urbanistica"
+    REGOLAMENTO_CENTRO_COMMERCIALE = "regolamento_centro_commerciale"
+    ELENCO_LOCAZIONI = "elenco_locazioni"
     ALTRO = "altro"
 
 
@@ -800,7 +809,14 @@ SCHEMA_REGISTRY: dict[TipoDocumento, type[BaseModel]] = {
 
 
 class ClassificationResult(BaseModel):
-    tipo_documento: TipoDocumento
+    tipo_documento: TipoDocumento = Field(description=(
+        "Tipo del documento. Specifici: collaudo_statico (collaudo/deposito sismico, relazione strutturale); "
+        "autorizzazione_ambientale (AUA, autorizzazione scarichi o emissioni); valutazione_amianto (censimento o "
+        "bonifica amianto/eternit); verifica_messa_a_terra (verifica impianto di terra e scariche atmosferiche, DPR 462); "
+        "libretto_impianto (libretto dell'impianto termico); autorizzazione_grande_struttura (autorizzazione commerciale "
+        "di media/grande struttura di vendita); convenzione_urbanistica (convenzione con il Comune); "
+        "regolamento_centro_commerciale (regolamento del centro o del consorzio dei conduttori); elenco_locazioni "
+        "(rent roll: elenco dei contratti di locazione di una struttura)."))
     confidence: float = Field(ge=0.0, le=1.0)
     motivazione: str = Field(description="Breve motivazione della classificazione (1-2 frasi)")
 

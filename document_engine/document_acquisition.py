@@ -10,6 +10,11 @@ from integrations import openapi_catasto
 _NOT_BOX = frozenset(TYPOLOGIES) - {"box"}  # A garage/parking space does not need an APE.
 _RETAIL_LIKE = frozenset(k for k, t in TYPOLOGIES.items() if t.asset == "commerciale")
 _LARGE_OR_INDUSTRIAL = frozenset(TYPOLOGIES)
+_VILLA = frozenset({"villa"})
+_STRUTTURALI = frozenset({"villa", "capannone", "laboratorio", "magazzino", "centro_commerciale"})
+_PRODUTTIVI = frozenset({"capannone", "laboratorio"})
+_CON_COPERTURE = frozenset({"capannone", "laboratorio", "magazzino"})
+_CENTRO = frozenset({"centro_commerciale"})
 _APE_REGIONAL_URL = {"ER": "https://sace-er.regione.emilia-romagna.it/ui/ape/public-registry",
                      "LOM": "https://areaoperativa.cened.it/extcatasto/html/public/visuraApe.jsf"}
 
@@ -39,6 +44,15 @@ CATALOGUE = [
     ("visura_camerale", "Visura camerale e poteri di firma", "professional", "ownership", "company", (), None),
     ("scia_licenza_commerciale", "SCIA o licenza per l'attività commerciale", "seller", "planning", "activity", (), _RETAIL_LIKE),
     ("certificato_prevenzione_incendi", "Certificato di prevenzione incendi (CPI/SCIA antincendio)", "seller", "planning", "fire", (), _LARGE_OR_INDUSTRIAL),
+    ("collaudo_statico", "Collaudo statico e deposito sismico", "seller", "planning", "sale", (), _STRUTTURALI),
+    ("certificato_destinazione_urbanistica", "Certificato di destinazione urbanistica (CDU)", "professional", "planning", "sale", ("cdu",), _VILLA),
+    ("autorizzazione_ambientale", "Autorizzazioni ambientali (AUA, scarichi, emissioni)", "seller", "planning", "sale", (), _PRODUTTIVI),
+    ("valutazione_amianto", "Verifica della presenza di amianto", "seller", "systems", "sale", (), _CON_COPERTURE),
+    ("verifica_messa_a_terra", "Verifica impianto di messa a terra", "seller", "systems", "sale", (), _PRODUTTIVI),
+    ("autorizzazione_grande_struttura", "Autorizzazione commerciale della struttura", "seller", "planning", "sale", (), _CENTRO),
+    ("convenzione_urbanistica", "Convenzioni urbanistiche e oneri con il Comune", "seller", "planning", "sale", (), _CENTRO),
+    ("regolamento_centro_commerciale", "Regolamento del centro o del consorzio dei conduttori", "administrator", "condominium", "sale", (), _CENTRO),
+    ("elenco_locazioni", "Elenco delle locazioni (rent roll)", "seller", "tenancy", "occupied", (), _CENTRO),
 ]
 
 

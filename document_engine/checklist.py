@@ -39,6 +39,11 @@ class ChecklistSpec:
     typologies: frozenset[str] | None = None  # None = every typology of the bucket's asset class
 
 
+_VILLA = frozenset({"villa"})
+_STRUTTURALI = frozenset({"capannone", "laboratorio", "magazzino", "centro_commerciale"})
+_PRODUTTIVI = frozenset({"capannone", "laboratorio"})
+_CON_COPERTURE = frozenset({"capannone", "laboratorio", "magazzino"})
+
 _MORTGAGE_WHY = ("Mostra ipoteche, pignoramenti, provenienza e altre formalità sull'immobile. Da fare prima della proposta: "
                  "circa 20–35 € di tributi (Sister o servizio online con SPID), il notaio la rifà solo prima del rogito.")
 
@@ -67,6 +72,13 @@ SALE_CHECKLIST: tuple[ChecklistSpec, ...] = (
                   "Amministratore", "condominium"),
     ChecklistSpec("verbale_assemblea_condominio", "Ultimi verbali di assemblea", "Lavori deliberati, spese straordinarie e morosità da chiarire prima del rogito.",
                   "Amministratore", "condominium", ("condominio",)),
+    # Detached house: structure, plot and heating system are the owner's own responsibility.
+    ChecklistSpec("collaudo_statico", "Collaudo statico e deposito sismico", "Documenta la sicurezza strutturale: spesso manca nelle ville costruite o ampliate in proprio.",
+                  "Venditore o tecnico", "recommended", typologies=_VILLA),
+    ChecklistSpec("certificato_destinazione_urbanistica", "Certificato di destinazione urbanistica (CDU)", "Se il lotto di pertinenza supera i 5.000 m² serve per l'atto; indica cosa si può costruire sul terreno.",
+                  "Comune (tramite tecnico)", "recommended", typologies=_VILLA),
+    ChecklistSpec("libretto_impianto", "Libretto dell'impianto di riscaldamento", "Mostra manutenzioni e controlli della caldaia; in alcune regioni va registrato al catasto degli impianti.",
+                  "Venditore", "recommended", typologies=_VILLA),
 )
 
 _NEGOZIO = frozenset({"negozio"})
@@ -75,8 +87,9 @@ _CAPANNONE = frozenset({"capannone", "laboratorio"})
 _MAGAZZINO = frozenset({"magazzino"})
 _CENTRO_COMMERCIALE = frozenset({"centro_commerciale"})
 # Typologies where a SCIA/licenza commerciale (retail or public-facing activity)
-# and a CPI (larger or industrial spaces) are realistically expected.
-_SCIA_TYPOLOGIES = frozenset(k for k, t in TYPOLOGIES.items() if t.asset == "commerciale")
+# and a CPI (larger or industrial spaces) are realistically expected. An office or a plain
+# warehouse does not normally hold a commercial licence.
+_SCIA_TYPOLOGIES = frozenset(k for k, t in TYPOLOGIES.items() if t.asset == "commerciale") - {"ufficio", "magazzino"}
 _CPI_TYPOLOGIES = frozenset(TYPOLOGIES)
 
 # Commercial unit: agibilità and systems are needed to open a business, the
@@ -121,6 +134,24 @@ COMMERCIAL_CHECKLIST: tuple[ChecklistSpec, ...] = (
                   "Amministratore", "condominium"),
     ChecklistSpec("verbale_assemblea_condominio", "Ultimi verbali di assemblea", "Lavori deliberati, spese straordinarie e morosità da chiarire prima del rogito.",
                   "Amministratore", "condominium", ("condominio",)),
+    # Industrial and large structures.
+    ChecklistSpec("collaudo_statico", "Collaudo statico e deposito sismico", "Documenta la sicurezza strutturale dell'edificio: indispensabile per strutture industriali e di grande dimensione.",
+                  "Venditore o tecnico", "recommended", typologies=_STRUTTURALI),
+    ChecklistSpec("autorizzazione_ambientale", "Autorizzazioni ambientali (AUA, scarichi, emissioni)", "Servono se nell'immobile si svolge un'attività produttiva; il subentro dell'acquirente non è automatico.",
+                  "Venditore", "recommended", typologies=_PRODUTTIVI),
+    ChecklistSpec("valutazione_amianto", "Verifica della presenza di amianto", "Le coperture in eternit dei vecchi capannoni e magazzini comportano obblighi di censimento e, a volte, di bonifica.",
+                  "Venditore o tecnico", "recommended", typologies=_CON_COPERTURE),
+    ChecklistSpec("verifica_messa_a_terra", "Verifica impianto di messa a terra e scariche atmosferiche", "Le verifiche periodiche (DPR 462/2001) sono obbligatorie per le attività con lavoratori.",
+                  "Venditore", "recommended", typologies=_PRODUTTIVI),
+    # Shopping centre.
+    ChecklistSpec("autorizzazione_grande_struttura", "Autorizzazione commerciale della struttura", "Senza l'autorizzazione di media o grande struttura di vendita l'attività non può proseguire e il valore cambia.",
+                  "Venditore", "required", typologies=_CENTRO_COMMERCIALE),
+    ChecklistSpec("convenzione_urbanistica", "Convenzioni urbanistiche e oneri con il Comune", "Possono imporre parcheggi, opere di urbanizzazione e vincoli d'uso che passano all'acquirente.",
+                  "Venditore o tecnico", "recommended", typologies=_CENTRO_COMMERCIALE),
+    ChecklistSpec("regolamento_centro_commerciale", "Regolamento del centro o del consorzio dei conduttori", "Regole di gestione, spese comuni e vincoli di merceologia verso i conduttori.",
+                  "Gestore del centro", "recommended", typologies=_CENTRO_COMMERCIALE),
+    ChecklistSpec("elenco_locazioni", "Elenco delle locazioni (rent roll)", "Canoni, scadenze e clausole di ogni conduttore: è la base del valore di un immobile a reddito.",
+                  "Venditore o gestore", "leased", typologies=_CENTRO_COMMERCIALE),
 )
 
 # Garage or parking space for sale: no APE (exempt), no agibilità of its own.
