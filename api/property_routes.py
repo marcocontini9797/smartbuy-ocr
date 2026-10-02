@@ -4,6 +4,8 @@ The router only composes canonical Fiverr/Supabase entities. It does not create
 parallel persistence models or duplicate tables.
 """
 
+from concurrent.futures import ThreadPoolExecutor
+
 from fastapi import APIRouter, HTTPException, Query, Depends
 import re
 import secrets
@@ -304,13 +306,22 @@ def property_territory(property_id: int, client=Depends(user_client)):
             return None
 
     lat, lon = float(property_record["latitude"]), float(property_record["longitude"])
-    point, point_error = _point_hazards(client, property_id, lat, lon)
-    try:
-        incomes = client.table("irpef_incomes").select("*").eq("codice_catastale", comune["codice_catastale"]).execute().data or []
-    except Exception:
-        incomes = []
-    territory = build_territory(seismic=one("seismic_zones", "codice_istat", comune["codice_istat"]),
-                                municipal_hazard=one("municipal_hazard", "codice_istat", comune["codice_istat"]),
+
+    def read_incomes() -> list:
+        try:
+            return client.table("irpef_incomes").select("*").eq("codice_catastale", comune["codice_catastale"]).execute().data or []
+        except Exception:
+            return []
+
+    # Five independent reads (one may call an external service): run them together.
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        point_f = pool.submit(_point_hazards, client, property_id, lat, lon)
+        seismic_f = pool.submit(one, "seismic_zones", "codice_istat", comune["codice_istat"])
+        municipal_f = pool.submit(one, "municipal_hazard", "codice_istat", comune["codice_istat"])
+        incomes_f = pool.submit(read_incomes)
+        point, point_error = point_f.result()
+        seismic, municipal_hazard, incomes = seismic_f.result(), municipal_f.result(), incomes_f.result()
+    territory = build_territory(seismic=seismic, municipal_hazard=municipal_hazard,
                                 point=point, point_error=point_error, incomes=incomes,
                                 postcode=(point or {}).get("postcode"))
     return {"property_id": property_id, "comune": comune["nome"], "latitude": lat, "longitude": lon, **territory}
@@ -417,18 +428,24 @@ def get_property(property_id: int, client=Depends(user_client)):
 def get_property_workspace(property_id: int, client=Depends(user_client)):
     """Return the canonical property lineage used by the frontend."""
     property_record = get_property(property_id, client)
-    analyses = _rows(client, "document_analyses", property_id)
-    document_ids = list({item["document_id"] for item in analyses if item.get("document_id") is not None})
-    try:
-        documents = (client.table("documents").select("*").in_("id", document_ids).execute().data or []) if document_ids else []
-    except Exception as exc:
-        raise HTTPException(502, "Document service unavailable") from exc
-    facts = current_facts(_rows(client, "property_facts", property_id), documents)
-    evidence = _rows(client, "property_evidence", property_id)
-    issues = _rows(client, "property_issues", property_id)
-    runs = _optional_rows(client, "smartbuy_analysis_runs", property_id)
-    operational_evidence = _optional_rows(client, "smartbuy_operational_evidence", property_id)
-    document_requests = _optional_rows(client, "smartbuy_document_requests", property_id)
+    # The reads below are independent: run them together instead of one round trip after another.
+    with ThreadPoolExecutor(max_workers=7) as pool:
+        analyses_f = pool.submit(_rows, client, "document_analyses", property_id)
+        facts_f = pool.submit(_rows, client, "property_facts", property_id)
+        evidence_f = pool.submit(_rows, client, "property_evidence", property_id)
+        issues_f = pool.submit(_rows, client, "property_issues", property_id)
+        runs_f = pool.submit(_optional_rows, client, "smartbuy_analysis_runs", property_id)
+        op_evidence_f = pool.submit(_optional_rows, client, "smartbuy_operational_evidence", property_id)
+        requests_f = pool.submit(_optional_rows, client, "smartbuy_document_requests", property_id)
+        analyses = analyses_f.result()
+        document_ids = list({item["document_id"] for item in analyses if item.get("document_id") is not None})
+        try:
+            documents = (client.table("documents").select("*").in_("id", document_ids).execute().data or []) if document_ids else []
+        except Exception as exc:
+            raise HTTPException(502, "Document service unavailable") from exc
+        facts = current_facts(facts_f.result(), documents)
+        evidence, issues, runs = evidence_f.result(), issues_f.result(), runs_f.result()
+        operational_evidence, document_requests = op_evidence_f.result(), requests_f.result()
     return {
         "property": property_record,
         "documents": documents,
