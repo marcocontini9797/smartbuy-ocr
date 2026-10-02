@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: smartbuy-api
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SMARTBUY_BFF_SECRET
+        sync: false
+      - key: SMARTBUY_OPS_SECRET
+        sync: false
+      - key: SMARTBUY_CORS_ORIGINS
+        sync: false

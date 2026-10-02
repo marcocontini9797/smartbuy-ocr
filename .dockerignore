@@ -1,0 +1,9 @@
+.venv
+__pycache__
+.pytest_cache
+.env
+.git
+backups
+evaluation/.cache
+test_*.py
+*.bak
