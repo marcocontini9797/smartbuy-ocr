@@ -1,0 +1,223 @@
+{
+  "name": "SmartBuy - manutenzione indice RAG",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Ogni notte alle 3",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SMARTBUY_API_URL }}/ops/rag/health",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-SmartBuy-Ops-Token",
+              "value": "={{ $env.SMARTBUY_OPS_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "name": "Stato indice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "Documenti da indicizzare?",
+              "leftValue": "={{ $json.backlog }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Documenti da indicizzare?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SMARTBUY_API_URL }}/ops/rag/backfill",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-SmartBuy-Ops-Token",
+              "value": "={{ $env.SMARTBUY_OPS_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "50"
+            }
+          ]
+        }
+      },
+      "name": "Indicizza arretrato",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "Resta arretrato?",
+              "leftValue": "={{ $json.backlog }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Resta arretrato?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "smartbuy@example.com",
+        "toEmail": "CAMBIA@example.com",
+        "subject": "SmartBuy: indice RAG in ritardo",
+        "emailFormat": "text",
+        "text": "=Dopo il backfill restano {{ $json.backlog }} documenti non indicizzati (indicizzati {{ $json.documents_indexed }} su {{ $json.documents_with_text }}). Controlla i log del backend e la chiave OpenAI."
+      },
+      "name": "Avvisa",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1200,
+        40
+      ]
+    }
+  ],
+  "connections": {
+    "Ogni notte alle 3": {
+      "main": [
+        [
+          {
+            "node": "Stato indice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stato indice": {
+      "main": [
+        [
+          {
+            "node": "Documenti da indicizzare?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Documenti da indicizzare?": {
+      "main": [
+        [
+          {
+            "node": "Indicizza arretrato",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Indicizza arretrato": {
+      "main": [
+        [
+          {
+            "node": "Resta arretrato?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resta arretrato?": {
+      "main": [
+        [
+          {
+            "node": "Avvisa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -9,6 +9,7 @@ from api.registry_routes import router as registry_router
 from api.operations_routes import router as operations_router
 from api.share_routes import router as share_router
 from api.seller_lead_routes import router as seller_lead_router
+from api.ops_routes import router as ops_router
 from document_engine.feedback_router import router as feedback_router
 
 
@@ -28,6 +29,7 @@ app.include_router(agent_router)
 app.include_router(agent_tasks_router)
 app.include_router(feedback_router)
 app.include_router(share_router)
+app.include_router(ops_router)
 app.include_router(seller_lead_router)
 
 
