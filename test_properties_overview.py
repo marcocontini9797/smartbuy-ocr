@@ -68,3 +68,37 @@ def test_overview_counts_documents_and_missing_required_per_property():
 
 def test_overview_of_an_empty_portfolio():
     assert app_with({"properties": []}).get("/api/v1/properties-overview").json() == {"items": []}
+
+
+def test_reads_are_retried_once_then_reported(monkeypatch):
+    from api import property_routes
+    monkeypatch.setattr(property_routes.time, "sleep", lambda *_: None)
+
+    class Flaky:
+        def __init__(self, failures):
+            self.failures, self.calls = failures, 0
+
+        def table(self, name):
+            return self
+
+        def select(self, *_):
+            return self
+
+        def eq(self, *_):
+            return self
+
+        def execute(self):
+            self.calls += 1
+            if self.calls <= self.failures:
+                raise ConnectionError("reset")
+            return type("R", (), {"data": [{"id": 1}]})()
+
+    once = Flaky(1)
+    assert property_routes._rows(once, "property_facts", 5) == [{"id": 1}] and once.calls == 2
+    twice = Flaky(5)
+    import pytest
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as err:
+        property_routes._rows(twice, "property_facts", 5)
+    assert err.value.status_code == 502 and twice.calls == 2
+    assert property_routes._optional_rows(Flaky(5), "x", 5) == []

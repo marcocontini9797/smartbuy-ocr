@@ -7,8 +7,10 @@ parallel persistence models or duplicate tables.
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, HTTPException, Query, Depends
+import logging
 import re
 import secrets
+import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
@@ -26,14 +28,28 @@ from document_engine.workflow_context import WorkflowContext
 from document_engine.valuation import build_valuation, calibration_from_outcomes
 
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api/v1", tags=["workspace"])
 Typology = Literal["appartamento", "villa", "box", "negozio", "ufficio", "capannone", "laboratorio", "magazzino", "centro_commerciale"]
 
 
+def _select_by_property(client, table: str, property_id: int) -> list[dict]:
+    """One read, tried twice: a dropped connection or a momentary limit under load is common and clears at once."""
+    last: Exception | None = None
+    for attempt in range(2):
+        try:
+            return client.table(table).select("*").eq("property_id", property_id).execute().data or []
+        except Exception as exc:     # noqa: BLE001 - any transport or service error is retried once
+            last = exc
+            time.sleep(0.15 * (attempt + 1))
+    logger.warning("read of %s for property %s failed twice: %r", table, property_id, last)
+    raise last  # type: ignore[misc]
+
+
 def _rows(client, table: str, property_id: int) -> list[dict]:
     try:
-        response = client.table(table).select("*").eq("property_id", property_id).execute()
-        return response.data or []
+        return _select_by_property(client, table, property_id)
     except HTTPException:
         raise
     except Exception as exc:
@@ -43,8 +59,7 @@ def _rows(client, table: str, property_id: int) -> list[dict]:
 def _optional_rows(client, table: str, property_id: int) -> list[dict]:
     """Read additive operational tables while migration rollout is in progress."""
     try:
-        response = client.table(table).select("*").eq("property_id", property_id).execute()
-        return response.data or []
+        return _select_by_property(client, table, property_id)
     except Exception:
         return []
 
