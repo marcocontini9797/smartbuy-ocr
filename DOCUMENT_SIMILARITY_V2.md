@@ -71,10 +71,10 @@ I limiti sono 200.000 caratteri OCR per documento, 4.000 elementi strutturati,
 200.000 caratteri strutturati complessivi per normalizzazione e 200 unità catastali.
 Al superamento non confronta soltanto il prefisso, ma segnala dati non sufficienti.
 
-Al momento dell'ispezione non esistevano chiamanti di compare_documents nel
-repository; fascicolo_builder.py era vuoto. Il modulo è pronto e testato, ma non
-è stato aggiunto automaticamente alla pipeline di upload in questo intervento.
-I consumer futuri devono gestire tutti gli stati, compresi quelli nuovi.
+Il confronto è chiamato dal caricamento documenti (`POST /properties/{id}/documents`,
+tramite `fascicolo_integration.build_fascicolo_comparisons`) in modo solo consultivo:
+vedi DOCUMENT_IDENTITY.md per come vengono interpretate le differenze e per la
+sostituzione di una versione. I consumer devono gestire tutti gli stati, compresi quelli nuovi.
 
 ## Test
 
