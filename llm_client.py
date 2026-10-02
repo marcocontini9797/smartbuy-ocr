@@ -130,11 +130,14 @@ def free_text_call(*, system: str, user: str, temperature: float = 0.2, model: s
     return response.output_text
 
 
-def embed_texts(texts: list[str], model: str | None = None) -> np.ndarray:
+def embed_texts(texts: list[str], model: str | None = None, dimensions: int | None = None) -> np.ndarray:
+    """`dimensions` shortens a text-embedding-3 vector (the retrieval index stores 1536) with
+    little loss of quality; omitted, the model's full size is returned."""
     if not texts:
         return np.zeros((0, 0))
     client = get_client()
-    response = client.embeddings.create(model=model or EMBEDDING_MODEL, input=texts)
+    options = {"dimensions": dimensions} if dimensions else {}
+    response = client.embeddings.create(model=model or EMBEDDING_MODEL, input=texts, **options)
     return np.array([d.embedding for d in response.data])
 
 

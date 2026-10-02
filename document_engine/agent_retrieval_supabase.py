@@ -108,5 +108,10 @@ class SupabaseAgentRetrieval:
                 provenance = self.client.table("fact_provenance").select("*").in_("id", provenance_ids).execute().data or []
             except Exception:
                 provenance = []
-        return build_agent_context(property_id=property_id, question=question, facts=facts,
-                                   documents=documents, provenance=provenance)
+        context = build_agent_context(property_id=property_id, question=question, facts=facts,
+                                      documents=documents, provenance=provenance)
+        from document_engine.rag_service import retrieve_passages
+        found = retrieve_passages(self.client, property_id, question)
+        context["passages"] = found["passages"]
+        context["retrieval_strength"] = found["strength"]
+        return context

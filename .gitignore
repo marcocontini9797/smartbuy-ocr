@@ -25,3 +25,6 @@ evaluation/reports/
 
 # Public data downloads (re-fetched by scripts/load_market_data.py)
 data/
+
+# retrieval evaluation cache (embeddings of the synthetic corpus)
+evaluation/.cache/

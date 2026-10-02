@@ -453,6 +453,9 @@ async def analyze_property_document(
             unsupported_fields=_unsupported_fields(payload),
         )
         _save_ocr_text(client, document, ocr_text)
+        from document_engine.rag_service import index_uploaded_document
+        index_uploaded_document(client, property_id=property_id, document=document, ocr_text=ocr_text,
+                                extracted_fields=payload.get("extracted_fields"))
         run.status = "completed"
         run.completed_at = now_iso()
         _best_effort_insert(client, "smartbuy_analysis_runs", run.model_dump(mode="json"))

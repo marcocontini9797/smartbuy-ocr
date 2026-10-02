@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from llm_client import MODEL, structured_call
 
-_CITATION_RE = re.compile(r"\(fonte:\s*([^,()]+?)(?:,\s*pag\.\s*(\d+))?\)")
+_CITATION_RE = re.compile(r"\(fonte:\s*([^,()]+?)(?:,\s*pagg?\.\s*(\d+)(?:\s*[-–]\s*\d+)?)?\)")
 
 SYSTEM_PROMPT = """Rispondi a domande di due diligence immobiliare su UN SOLO fascicolo, usando \
 ESCLUSIVAMENTE i fatti, i rischi e i brani di documento (evidence) forniti nel messaggio dell'utente.
@@ -84,8 +84,11 @@ class AgentLLMGateway:
             "brani_di_documenti": [
                 {"fonte": e.get("document"), "pagina": e.get("page"), "testo": e.get("text")}
                 for e in context.get("evidence", [])
-            ],
+            ] + list(context.get("passages", [])),
         }
+        if context.get("retrieval_strength") == "none":
+            payload["nota_ricerca"] = ("La ricerca nel testo dei documenti non ha trovato brani pertinenti alla "
+                                       "domanda: se i fatti non bastano, di' che non risulta dai documenti.")
         if not payload["fatti_del_fascicolo"] and not payload["brani_di_documenti"]:
             return _Response(
                 "Non ho ancora nessun documento analizzato per questo fascicolo: carica almeno un documento "
@@ -98,5 +101,7 @@ class AgentLLMGateway:
             output_model=_AgentLLMOutput,
             model=MODEL,
         )
-        sources = _cited_sources(result.answer, context.get("evidence", []))
+        cited_from = list(context.get("evidence", [])) + [
+            {"document": p.get("fonte"), "page": p.get("pagina")} for p in context.get("passages", [])]
+        sources = _cited_sources(result.answer, cited_from)
         return _Response(result.answer, result.confidence, result.grounded, sources)
