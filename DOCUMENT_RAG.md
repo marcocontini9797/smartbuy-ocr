@@ -23,3 +23,15 @@ Tutto fallisce in modo morbido: senza chiave OpenAI o migrazione, l'agente torna
 - Corpus sintetico: va riconfermato su documenti reali prima di fidarsi dei numeri assoluti.
 
 Comandi: `python -m evaluation.evaluate_rag --live --llm --corpus scale`.
+
+## Ciclo di feedback
+Ogni risposta registra una **traccia** (`agent_retrieval_traces`: chunk usati, rilevanza, embedding della domanda); 👍/👎 nella chat
+(`agent_answer_feedback.trace_id`) la valutano. Il feedback agisce in due modi:
+1. **Subito, nello stesso fascicolo** (`rag_search.apply_hints`, RPC `smartbuy_feedback_hints`): una domanda simile (coseno ≥ 0,88)
+   a una già valutata fa salire i chunk validati con 👍 (anche se non erano tra i candidati) e scendere quelli bocciati con 👎.
+   Non rimuove mai un chunk: il fascicolo potrebbe aver ricevuto nel frattempo il documento giusto.
+2. **Nel tempo, su tutto il sistema** (`rag_calibration.py`, `GET /ops/rag/calibration`, workflow n8n `rag-calibrazione.json`):
+   confronta la rilevanza dei brani delle risposte utili e di quelle segnalate e propone la soglia debole. Solo con almeno 15
+   valutazioni per gruppo; la soglia la applica una persona.
+Verifica dal vivo: `scripts/smoke_rag_feedback.py` (inserimento, ricerca, traccia, suggerimenti, nessuna ereditarietà da domande diverse).
+Limite onesto: la ripetizione di domande simili nello stesso fascicolo è rara; il valore principale è la calibrazione.

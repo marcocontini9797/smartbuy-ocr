@@ -26,6 +26,8 @@ class AgentAskResponse(BaseModel):
 
     sources: list
 
+    trace_id: str | None = None
+
 
 class AgentAnswerFeedbackRequest(BaseModel):
 
@@ -40,3 +42,5 @@ class AgentAnswerFeedbackRequest(BaseModel):
     grounded: bool | None = None
 
     sources: list = Field(default_factory=list, max_length=20)
+
+    trace_id: str | None = Field(default=None, max_length=64)

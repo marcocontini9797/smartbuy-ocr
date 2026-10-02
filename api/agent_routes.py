@@ -29,15 +29,24 @@ router = APIRouter(prefix="/api/v1", tags=["agent"])
 @router.post("/properties/{property_id}/agent/ask", response_model=AgentAskResponse)
 def ask_agent(property_id: int, request: AgentAskRequest, client=Depends(user_client)):
     get_property(property_id, client)  # 404s if the caller doesn't own this property
-    service = SmartBuyAgentService(retrieval=SupabaseAgentRetrieval(client), llm_gateway=AgentLLMGateway())
+    retrieval = SupabaseAgentRetrieval(client)
+    service = SmartBuyAgentService(retrieval=retrieval, llm_gateway=AgentLLMGateway())
     try:
         result = service.ask(property_id=property_id, question=request.question)
     except Exception as exc:
         raise HTTPException(502, "L'assistente non è riuscito a rispondere: riprova tra poco.") from exc
     return AgentAskResponse(
         answer=result.answer, confidence=result.confidence, grounded=result.grounded,
-        risk_level=result.risk_level, sources=result.sources,
+        risk_level=result.risk_level, sources=result.sources, trace_id=retrieval.last_trace_id,
     )
+
+
+def _valid_trace(value: str | None) -> str | None:
+    import uuid
+    try:
+        return str(uuid.UUID(value)) if value else None
+    except ValueError:
+        return None
 
 
 @router.post("/properties/{property_id}/agent/feedback", status_code=201)
@@ -50,7 +59,7 @@ def rate_agent_answer(property_id: int, request: AgentAnswerFeedbackRequest, cli
         client.table("agent_answer_feedback").insert({
             "property_id": property_id, "question": request.question.strip(), "answer": request.answer,
             "rating": request.rating, "comment": (request.comment or "").strip() or None,
-            "grounded": request.grounded, "sources": request.sources,
+            "grounded": request.grounded, "sources": request.sources, "trace_id": _valid_trace(request.trace_id),
         }).execute()
     except Exception as exc:
         raise HTTPException(503, "Feedback non salvato: riprova tra poco.") from exc

@@ -57,4 +57,4 @@ def test_agent_feedback_requires_valid_rating_and_saves(monkeypatch):
     r = c.post("/api/v1/properties/5/agent/feedback", json={**base, "rating": -1})
     assert r.status_code == 201
     assert saved == [{"property_id": 5, "question": "q", "answer": "a", "rating": -1, "comment": None,
-                      "grounded": None, "sources": []}]
+                      "grounded": None, "sources": [], "trace_id": None}]

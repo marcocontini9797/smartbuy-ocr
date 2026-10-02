@@ -86,16 +86,42 @@ def index_uploaded_document(client, *, property_id: int, document: dict, ocr_tex
         return 0
 
 
+def record_trace(client, property_id: int, question: str, result) -> str | None:
+    """Remember what retrieval did for this question, so a later 👍/👎 can be tied to the chunks
+    behind the answer. Best effort: a failure only means this answer cannot be rated."""
+    try:
+        row = {
+            "property_id": property_id, "question": question[:1000], "strength": result.strength,
+            "best_relevance": result.best_relevance, "best_similarity": result.best_similarity,
+            "chunk_ids": [p.chunk_id for p in result.ranked if _is_uuid(p.chunk_id)],
+            "question_embedding": result.vector,
+        }
+        data = client.table("agent_retrieval_traces").insert(row).execute().data or []
+        return str(data[0]["id"]) if data else None
+    except Exception:
+        return None
+
+
+def _is_uuid(value: str) -> bool:
+    import uuid
+    try:
+        uuid.UUID(str(value))
+        return True
+    except ValueError:
+        return False
+
+
 def retrieve_passages(client, property_id: int, question: str) -> dict[str, Any]:
-    """{"passages": [...], "strength": "strong|weak|none"} — empty when retrieval is unavailable."""
+    """{"passages": [...], "strength": "strong|weak|none", "trace_id": ...} — empty when retrieval is unavailable."""
     if not os.environ.get("OPENAI_API_KEY"):
-        return {"passages": [], "strength": "unavailable"}
+        return {"passages": [], "strength": "unavailable", "trace_id": None}
     try:
         from document_engine.rag_llm import expand_question, rerank_passages
         from document_engine.rag_search import passages_for_prompt, retrieve
         from document_engine.rag_store import SupabaseChunkStore
         result = retrieve(SupabaseChunkStore(client), _embed_queries, property_id, question,
                           expand=expand_question, rerank=rerank_passages)
-        return {"passages": passages_for_prompt(result.passages), "strength": result.strength}
+        return {"passages": passages_for_prompt(result.passages), "strength": result.strength,
+                "trace_id": record_trace(client, property_id, question, result)}
     except Exception:
-        return {"passages": [], "strength": "unavailable"}
+        return {"passages": [], "strength": "unavailable", "trace_id": None}

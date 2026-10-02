@@ -37,6 +37,34 @@ class SupabaseChunkStore:
         return [row for row in rows if (row["document_id"], row["chunk_index"]) in keys]
 
 
+    def feedback_hints(self, property_id: int, embedding: Sequence[float], min_similarity: float) -> dict[str, float]:
+        """Net rating per chunk from rated answers to similar questions of this fascicolo."""
+        rows = self.client.rpc("smartbuy_feedback_hints", {
+            "p_property_id": property_id, "p_embedding": list(embedding), "p_min_similarity": min_similarity,
+        }).execute().data or []
+        net: dict[str, float] = {}
+        for row in rows:
+            net[str(row["chunk_id"])] = net.get(str(row["chunk_id"]), 0.0) + float(row["rating"])
+        return net
+
+    def chunks_by_id(self, property_id: int, ids: list[str]) -> list:
+        from document_engine.rag_search import Passage
+        rows = (self.client.table("document_chunks")
+                .select("id,document_id,chunk_index,page_start,page_end,heading,content,context")
+                .eq("property_id", property_id).in_("id", ids).execute().data) or []
+        names: dict[int, dict] = {}
+        if rows:
+            docs = (self.client.table("documents").select("id,file_name,document_type")
+                    .in_("id", sorted({r["document_id"] for r in rows})).execute().data) or []
+            names = {int(d["id"]): d for d in docs}
+        return [Passage(chunk_id=str(r["id"]), document_id=int(r["document_id"]),
+                        document_name=names.get(int(r["document_id"]), {}).get("file_name"),
+                        document_type=names.get(int(r["document_id"]), {}).get("document_type"),
+                        chunk_index=int(r["chunk_index"]), page_start=int(r.get("page_start") or 1),
+                        page_end=int(r.get("page_end") or 1), heading=r.get("heading"),
+                        text=r.get("content") or "", context=r.get("context") or "") for r in rows]
+
+
 # --- in-memory store -------------------------------------------------------------------------------
 
 _SUFFIXES = sorted([

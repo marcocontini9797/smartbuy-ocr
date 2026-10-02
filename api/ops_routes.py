@@ -58,3 +58,22 @@ def negative_feedback(days: int = 7):
     rows = (_admin().table("agent_answer_feedback").select("property_id,question,answer,comment,grounded,sources,created_at")
             .eq("rating", -1).gte("created_at", since).order("created_at", desc=True).limit(100).execute().data or [])
     return {"count": len(rows), "items": rows}
+
+
+@router.get("/rag/calibration", dependencies=[Depends(require_ops)])
+def rag_calibration(days: int = 90):
+    """Where the retrieval thresholds should sit according to what agents rated. Counts and
+    numbers only: no question or answer text."""
+    from datetime import datetime, timedelta, timezone
+
+    from document_engine.rag_calibration import calibration_report
+    since = (datetime.now(timezone.utc) - timedelta(days=max(1, min(days, 365)))).isoformat()
+    client = _admin()
+    feedback = (client.table("agent_answer_feedback").select("trace_id,rating").gte("created_at", since)
+                .not_.is_("trace_id", "null").limit(5000).execute().data or [])
+    traces = {t["id"]: t for t in (client.table("agent_retrieval_traces").select("id,strength,best_relevance")
+                                   .in_("id", [f["trace_id"] for f in feedback][:1000] or ["00000000-0000-0000-0000-000000000000"])
+                                   .execute().data or [])}
+    rows = [{"rating": f["rating"], **{k: traces[f["trace_id"]][k] for k in ("strength", "best_relevance")}}
+            for f in feedback if f["trace_id"] in traces]
+    return calibration_report(rows)

@@ -129,6 +129,7 @@ class RetrievalConfig:
     weak_similarity: float = WEAK_SIMILARITY
     strong_relevance: float = STRONG_RELEVANCE
     weak_relevance: float = WEAK_RELEVANCE
+    hint_similarity: float = 0.88        # how close an earlier, rated question must be to count
 
 
 @dataclass
@@ -140,6 +141,8 @@ class Retrieval:
     reasons: list[str] = field(default_factory=list)
     ranked: list[Passage] = field(default_factory=list)    # the hits themselves, best first
     best_relevance: float | None = None                    # of the top 3, when a reranker ran
+    vector: list[float] | None = None                      # embedding of the question, kept for the feedback trace
+    hints_applied: int = 0                                 # chunks moved up or down by earlier feedback
 
 
 def _passage(row: dict[str, Any]) -> Passage:
@@ -238,6 +241,36 @@ def _with_neighbors(store: ChunkStore, property_id: int, chosen: list[Passage], 
     return chosen + extra
 
 
+def apply_hints(ranked: list[Passage], hints: dict[str, float], config: RetrievalConfig, reranked: bool,
+                extra: dict[str, Passage] | None = None) -> tuple[list[Passage], int]:
+    """Earlier feedback on similar questions of the same fascicolo. `hints` maps a chunk id to
+    the net rating (positive: an answer built on it was marked useful). A validated chunk is
+    treated as strong evidence (and added if it was not among the candidates); a rejected one
+    is demoted, never removed: the fascicolo may since have gained the right document."""
+    applied = 0
+    by_id = {p.chunk_id: p for p in ranked}
+    for chunk_id, net in hints.items():
+        passage = by_id.get(chunk_id) or (extra or {}).get(chunk_id)
+        if passage is None or net == 0:
+            continue
+        if passage.chunk_id not in by_id:
+            ranked.append(passage)
+            by_id[passage.chunk_id] = passage
+        applied += 1
+        if net > 0:
+            passage.score += 1.0
+            passage.similarity = max(passage.similarity, config.strong_similarity)
+            if reranked:
+                passage.relevance = max(passage.relevance or 0.0, config.strong_relevance)
+        else:
+            passage.score *= 0.5
+            passage.similarity *= 0.7
+            if reranked:
+                passage.relevance = (passage.relevance or 0.0) * 0.5
+    ranked.sort(key=lambda p: (-(p.relevance or 0.0) if reranked else 0.0, -p.score, p.document_id, p.chunk_index))
+    return ranked, applied
+
+
 def retrieve(store: ChunkStore, embed: Embedder, property_id: int, question: str, *,
              expand: Expander | None = None, rerank: Reranker | None = None,
              config: RetrievalConfig = RetrievalConfig()) -> Retrieval:
@@ -262,15 +295,30 @@ def retrieve(store: ChunkStore, embed: Embedder, property_id: int, question: str
             ranked = sorted(ranked, key=lambda p: (-(p.relevance or 0.0), -p.score, p.document_id, p.chunk_index))
             reranked = True
 
+    hints_applied = 0
+    feedback = getattr(store, "feedback_hints", None)
+    if feedback is not None:
+        try:
+            hints = feedback(property_id, list(map(float, vectors[0])), config.hint_similarity)
+        except Exception:
+            hints = {}
+        if hints:
+            known = {p.chunk_id for p in ranked}
+            missing = [c for c, net in hints.items() if net > 0 and c not in known]
+            extra = {p.chunk_id: p for p in store.chunks_by_id(property_id, missing)} if missing else {}
+            ranked, hints_applied = apply_hints(ranked, hints, config, reranked, extra)
+
     strength, reasons = judge(ranked, profile, config, reranked)
     best_similarity = max((p.similarity for p in ranked[:3]), default=0.0)
     best_relevance = max((p.relevance or 0.0 for p in ranked[:3]), default=0.0) if reranked else None
     if strength == "none":
-        return Retrieval([], "none", best_similarity, queries, reasons, ranked=[], best_relevance=best_relevance)
+        return Retrieval([], "none", best_similarity, queries, reasons, ranked=[], best_relevance=best_relevance,
+                         vector=list(map(float, vectors[0])), hints_applied=hints_applied)
     chosen = _limit_per_document(ranked, config.top_k, config.max_per_document)
     passages = _with_neighbors(store, property_id, list(chosen), config.neighbors)
     passages.sort(key=lambda p: (p.document_id, p.chunk_index))
-    return Retrieval(passages, strength, best_similarity, queries, reasons, ranked=chosen, best_relevance=best_relevance)
+    return Retrieval(passages, strength, best_similarity, queries, reasons, ranked=chosen, best_relevance=best_relevance,
+                     vector=list(map(float, vectors[0])), hints_applied=hints_applied)
 
 
 def passages_for_prompt(passages: Sequence[Passage]) -> list[dict[str, Any]]:

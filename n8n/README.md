@@ -14,10 +14,9 @@ Configurazione:
 
 Gli endpoint restituiscono solo conteggi, nessun contenuto dei documenti.
 
-## feedback-settimanale.json
-Ogni lunedì alle 8: legge le risposte dell'agente che gli utenti hanno segnato 👎 negli ultimi 7 giorni
-(`GET /ops/feedback/negative`) e, se ce ne sono, manda una mail con domanda, risposta, fonti e commento.
-Servono le stesse variabili e lo stesso segreto del workflow precedente. Ogni segnalazione è un candidato
-caso di test: le domande dove l'agente ha sbagliato con le fonti giuste mostrano un problema di
-risposta, quelle senza fonti un problema di ricerca (da aggiungere a `evaluation/rag_corpus*.py`).
-Il riepilogo contiene testo di domande e risposte: usa un destinatario interno.
+## rag-calibrazione.json
+Ogni lunedì alle 8 manda un rapporto sulla calibrazione della ricerca (`GET /ops/rag/calibration`): quante risposte
+sono state valutate, quanto erano rilevanti i brani trovati per quelle utili e per quelle no, e (con almeno 15 valutazioni
+per gruppo) quale soglia di rilevanza terrebbe le risposte utili rifiutando quelle segnalate. Contiene solo numeri.
+Le soglie non si applicano da sole: le cambia una persona in `document_engine/rag_search.py` dopo aver confrontato
+la proposta con `evaluation/`.

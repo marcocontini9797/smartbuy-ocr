@@ -1,0 +1,92 @@
+{
+  "name": "SmartBuy - calibrazione RAG dai feedback",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "name": "Ogni lunedì alle 8",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SMARTBUY_API_URL }}/ops/rag/calibration",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-SmartBuy-Ops-Token",
+              "value": "={{ $env.SMARTBUY_OPS_SECRET }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "name": "Calibrazione dalle valutazioni",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "smartbuy@example.com",
+        "toEmail": "CAMBIA@example.com",
+        "subject": "SmartBuy: calibrazione della ricerca nei documenti",
+        "emailFormat": "text",
+        "text": "=Valutazioni degli agenti sulle risposte (ultimi 90 giorni): {{ $json.rated }} ({{ $json.useful }} utili, {{ $json.not_useful }} non utili).\n\nRisposte non utili nonostante evidenza forte: {{ $json.bad_despite_strong }}\nRisposte utili nonostante evidenza debole: {{ $json.useful_despite_weak }}\nSoglie attuali: debole {{ $json.current.weak }}, forte {{ $json.current.strong }}\n\n{{ $json.note }}"
+      },
+      "name": "Invia rapporto",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        480,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Ogni lunedì alle 8": {
+      "main": [
+        [
+          {
+            "node": "Calibrazione dalle valutazioni",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calibrazione dalle valutazioni": {
+      "main": [
+        [
+          {
+            "node": "Invia rapporto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

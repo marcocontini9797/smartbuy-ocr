@@ -84,6 +84,7 @@ def build_agent_context(*, property_id: int, question: str, facts: list[dict], d
 class SupabaseAgentRetrieval:
     def __init__(self, client):
         self.client = client
+        self.last_trace_id: str | None = None
 
     def _rows(self, table: str, property_id: int) -> list[dict]:
         try:
@@ -114,4 +115,5 @@ class SupabaseAgentRetrieval:
         found = retrieve_passages(self.client, property_id, question)
         context["passages"] = found["passages"]
         context["retrieval_strength"] = found["strength"]
+        self.last_trace_id = found.get("trace_id")
         return context
